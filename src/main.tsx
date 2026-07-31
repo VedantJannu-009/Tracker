@@ -5,8 +5,14 @@ import App from './App'
 import './styles/index.css'
 import { initializeDatabase } from './db/seed'
 import './stores/themeStore'
+import { useLaunchStore } from './stores/launchStore'
 
 initializeDatabase()
+  .then(() => useLaunchStore.getState().setReady())
+  .catch((err) => {
+    console.error('Failed to initialize database', err)
+    useLaunchStore.getState().setReady()
+  })
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>

@@ -146,7 +146,11 @@ export function SearchPage() {
                   className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl bg-muted/30 group"
                 >
                   <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => navigate(`/exercise/${ex.id}`)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/exercise/${ex.id}`) } }}
+                    aria-label={`Open ${ex.name}`}
                     className="flex items-center gap-2 sm:gap-3 flex-1 cursor-pointer min-w-0"
                   >
                     <Dumbbell size={14} className="text-muted-foreground shrink-0" />
@@ -156,7 +160,7 @@ export function SearchPage() {
                     <Badge className="text-[10px]">{ex.difficulty}</Badge>
                     <span className="text-xs text-muted-foreground hidden sm:inline">{ex.equipment}</span>
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DropdownMenuTrigger className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity">
                         <MoreVertical size={14} className="text-muted-foreground" />
                       </DropdownMenuTrigger>
                         <DropdownMenuContent>

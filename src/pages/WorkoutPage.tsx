@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { AnimatePresence } from 'framer-motion'
 import { db } from '@/db/schema'
 import { useWorkoutStore } from '@/stores/workoutStore'
+import { toast } from '@/stores/toastStore'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { ExerciseCard } from '@/components/workout/ExerciseCard'
-import { ArrowLeft, Plus, Trash2, Play, Save, X } from 'lucide-react'
+import { WorkoutModeBar } from '@/components/workout/WorkoutModeBar'
+import { WorkoutCompleteModal, type WorkoutSummary } from '@/components/workout/WorkoutCompleteModal'
+import { useExerciseMeta } from '@/hooks/useExerciseMeta'
+import { ArrowLeft, Plus, Trash2, Play, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useUnit } from '@/hooks/useUnit'
 import { unitToKg } from '@/lib/units'
@@ -37,9 +42,12 @@ export function WorkoutPage() {
   const [selectedMuscle, setSelectedMuscle] = useState<string>('')
   const [selectedExercise, setSelectedExercise] = useState<string>('')
   const [showAddExercise, setShowAddExercise] = useState(false)
-  const [openCardId, setOpenCardId] = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [activeExerciseId, setActiveExerciseId] = useState<string | null>(null)
+  const [showComplete, setShowComplete] = useState(false)
+  const [complete, setComplete] = useState<WorkoutSummary | null>(null)
+  const [confirmDeleteWorkout, setConfirmDeleteWorkout] = useState(false)
 
   const muscleGroups = useLiveQuery(() => db.muscleGroups.toArray())
   const exercises = useLiveQuery(
@@ -47,6 +55,14 @@ export function WorkoutPage() {
     [selectedMuscle]
   )
   const allExercises = useLiveQuery(() => db.exercises.toArray())
+  const meta = useExerciseMeta(currentExercises.map(e => e.exerciseId))
+
+  const totalSets = currentExercises.reduce((n, e) => n + e.sets.length, 0)
+  const activeExerciseName = (() => {
+    const entry = currentExercises.find(e => e.id === activeExerciseId) ?? currentExercises[0]
+    if (!entry) return null
+    return allExercises?.find(x => x.id === entry.exerciseId)?.name ?? entry.exerciseId
+  })()
 
   const deleteTargetExercise = currentExercises.find(e => e.id === deleteTarget)
   const deleteTargetName = (() => {
@@ -56,7 +72,12 @@ export function WorkoutPage() {
   })()
 
   useEffect(() => {
-    if (id) loadWorkout(id)
+    if (id) {
+      loadWorkout(id).then(() => {
+        const first = useWorkoutStore.getState().currentExercises[0]
+        setActiveExerciseId(first?.id ?? null)
+      })
+    }
   }, [id, loadWorkout])
 
   const handleStartWorkout = async () => {
@@ -66,7 +87,12 @@ export function WorkoutPage() {
 
   const handleAddExercise = async () => {
     if (!selectedExercise) return
+    const before = useWorkoutStore.getState().currentExercises.length
     await addExercise(selectedExercise)
+    const next = useWorkoutStore.getState().currentExercises
+    const entry = next.find(e => e.exerciseId === selectedExercise)
+    if (entry) setActiveExerciseId(entry.id)
+    if (next.length > before) toast('Exercise added')
     setSelectedExercise('')
     setSelectedMuscle('')
     setShowAddExercise(false)
@@ -76,36 +102,72 @@ export function WorkoutPage() {
     const w = parseFloat(weight[exerciseId] || '0')
     const r = parseInt(reps[exerciseId] || '0')
     if (w <= 0 || r <= 0) return
-    await addSet(exerciseId, unitToKg(w, unit), r)
+    const entry = currentExercises.find(e => e.id === exerciseId)
+    const weightKg = unitToKg(w, unit)
+    await addSet(exerciseId, weightKg, r)
+    setActiveExerciseId(exerciseId)
     setWeight(prev => ({ ...prev, [exerciseId]: '' }))
     setReps(prev => ({ ...prev, [exerciseId]: '' }))
-  }
-
-  const handleSave = async () => {
-    await saveWorkout()
-    navigate('/')
-  }
-
-  const handleDelete = async () => {
-    if (currentWorkout && confirm(`Delete "${currentWorkout.name}"? This cannot be undone.`)) {
-      await deleteWorkout(currentWorkout.id)
-      navigate('/')
+    if (entry) {
+      const pr = await db.personalRecords
+        .where('exerciseId')
+        .equals(entry.exerciseId)
+        .and(p => p.type === 'weight')
+        .first()
+      if (!pr || weightKg > pr.value) toast('Personal Record!')
     }
   }
 
-  const handleOpenChange = (id: string, open: boolean) => {
-    setOpenCardId(open ? id : prev => (prev === id ? null : prev))
+  const handleFinish = () => {
+    if (!currentWorkout) return
+    const allSets = currentExercises.flatMap(e => e.sets)
+    let best: WorkoutSummary['best'] = null
+    for (const e of currentExercises) {
+      for (const s of e.sets) {
+        if (!best || s.weight > best.weight) {
+          best = {
+            weight: s.weight,
+            exerciseName: allExercises?.find(x => x.id === e.exerciseId)?.name ?? e.exerciseId,
+          }
+        }
+      }
+    }
+    setComplete({
+      workoutName: currentWorkout.name,
+      durationSec: Math.max(1, Math.round((Date.now() - currentWorkout.createdAt) / 1000)),
+      exerciseCount: currentExercises.length,
+      setCount: allSets.length,
+      volume: allSets.reduce((sum, s) => sum + s.weight * s.reps, 0),
+      best,
+    })
+    setShowComplete(true)
+  }
+
+  const handleDone = () => {
+    void saveWorkout()
+    navigate('/')
+  }
+
+  const handleDeleteWorkout = async () => {
+    if (!currentWorkout) return
+    setConfirmDeleteWorkout(false)
+    await deleteWorkout(currentWorkout.id)
+    navigate('/')
   }
 
   const handleDeleteExercise = async () => {
     if (!deleteTarget) return
     setDeleting(true)
     await removeExercise(deleteTarget)
+    if (activeExerciseId === deleteTarget) {
+      setActiveExerciseId(useWorkoutStore.getState().currentExercises[0]?.id ?? null)
+    }
     setDeleteTarget(null)
     setDeleting(false)
+    toast('Exercise deleted')
   }
 
-  if (!currentWorkout) {
+  if (!currentWorkout && !showComplete) {
     return (
       <PageContainer>
         <div className="flex items-center gap-3 mb-6">
@@ -143,20 +205,17 @@ export function WorkoutPage() {
     <PageContainer>
       <div className="flex items-center justify-between mb-6 gap-2">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-          <Button variant="ghost" size="icon" onClick={handleSave} className="shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="shrink-0" aria-label="Back">
             <ArrowLeft size={20} />
           </Button>
           <div className="min-w-0 flex-1">
-            <h1 className="text-base sm:text-xl font-bold truncate">{currentWorkout.name}</h1>
-            <p className="text-xs text-muted-foreground">{formatDate(currentWorkout.date)}</p>
+            <h1 className="text-base sm:text-xl font-bold truncate">{currentWorkout?.name ?? complete?.workoutName ?? 'Workout'}</h1>
+            <p className="text-xs text-muted-foreground">{currentWorkout ? formatDate(currentWorkout.date) : ''}</p>
           </div>
         </div>
-        <div className="flex gap-1 sm:gap-2 shrink-0">
-          <Button variant="ghost" size="icon" onClick={handleDelete} className="shrink-0">
+        <div className="shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => setConfirmDeleteWorkout(true)} className="shrink-0" aria-label="Delete workout">
             <Trash2 size={18} />
-          </Button>
-          <Button size="sm" onClick={handleSave} className="text-xs sm:text-sm whitespace-nowrap">
-            <Save size={16} className="mr-1" /> Save
           </Button>
         </div>
       </div>
@@ -164,6 +223,7 @@ export function WorkoutPage() {
       <div className="space-y-3 mb-4">
         {currentExercises.map(exercise => {
           const ex = allExercises?.find(e => e.id === exercise.exerciseId)
+          const info = meta?.[exercise.exerciseId]
           return (
             <ExerciseCard
               key={exercise.id}
@@ -172,8 +232,13 @@ export function WorkoutPage() {
               unit={unit}
               weight={weight[exercise.id] ?? ''}
               reps={reps[exercise.id] ?? ''}
-              isOpen={openCardId === exercise.id}
-              onOpenChange={open => handleOpenChange(exercise.id, open)}
+              equipment={ex?.equipment}
+              difficulty={ex?.difficulty}
+              lastWorkout={info?.lastDate ?? null}
+              pr={info && (info.weight || info.reps || info.volume)
+                ? { weight: info.weight ?? 0, reps: info.reps ?? 0, volume: info.volume ?? 0 }
+                : null}
+              active={exercise.id === activeExerciseId}
               onWeightChange={v => setWeight(prev => ({ ...prev, [exercise.id]: v }))}
               onRepsChange={v => setReps(prev => ({ ...prev, [exercise.id]: v }))}
               onAddSet={() => handleAddSet(exercise.id)}
@@ -190,7 +255,7 @@ export function WorkoutPage() {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">Add Exercise</h3>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowAddExercise(false)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowAddExercise(false)} aria-label="Close add exercise">
                 <X size={14} />
               </Button>
             </div>
@@ -231,6 +296,18 @@ export function WorkoutPage() {
         </Button>
       )}
 
+      {totalSets > 0 && <div aria-hidden="true" className="h-48" />}
+
+      <AnimatePresence>
+        {totalSets > 0 && (
+          <WorkoutModeBar unit={unit} currentExerciseName={activeExerciseName} onFinish={handleFinish} />
+        )}
+      </AnimatePresence>
+
+      {complete && (
+        <WorkoutCompleteModal open={showComplete} summary={complete} unit={unit} onDone={handleDone} />
+      )}
+
       {deleteTarget && deleteTargetExercise && (
         <ConfirmDialog
           open
@@ -247,6 +324,22 @@ export function WorkoutPage() {
           onCancel={() => setDeleteTarget(null)}
         />
       )}
+
+      {confirmDeleteWorkout && currentWorkout && (
+        <ConfirmDialog
+          open
+          title="Delete Workout?"
+          description={
+            <>
+              This will permanently delete <strong>{currentWorkout.name}</strong> and all
+              of its exercises and sets. This cannot be undone.
+            </>
+          }
+          confirmLabel="Delete"
+          onConfirm={handleDeleteWorkout}
+          onCancel={() => setConfirmDeleteWorkout(false)}
+        />
+      )}
     </PageContainer>
   )
 }
@@ -259,19 +352,17 @@ function RecentWorkoutList({ onSelect }: { onSelect: (id: string) => void }) {
   return (
     <div className="space-y-2">
       {recent.map(w => (
-        <div
+        <button
           key={w.id}
           onClick={() => onSelect(w.id)}
-          className="flex items-center justify-between p-3 rounded-xl bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+          className="flex items-center justify-between w-full text-left p-3 rounded-xl bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
         >
           <div>
             <div className="text-sm font-medium">{w.name}</div>
             <div className="text-xs text-muted-foreground">{formatDate(w.date)}</div>
           </div>
-          <Button variant="ghost" size="sm">
-            <Play size={14} />
-          </Button>
-        </div>
+          <Play size={16} className="text-muted-foreground shrink-0 ml-2" />
+        </button>
       ))}
     </div>
   )

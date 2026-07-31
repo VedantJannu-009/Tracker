@@ -64,6 +64,7 @@ export function useExerciseStats(exerciseId: string) {
   return {
     exercise,
     muscle,
+    loading: exercise === undefined,
     workoutExercises: workoutExercises ?? [],
     sets: sets ?? [],
     workouts: workouts ?? [],

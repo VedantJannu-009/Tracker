@@ -3,13 +3,14 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useExerciseStats } from '@/hooks/useExerciseStats'
 import { deleteExercise, renameExercise, duplicateExercise } from '@/services/exerciseUtils'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { ArrowLeft, Dumbbell, TrendingUp, Clock, MoreVertical, Pencil, Copy, Trash2, Layers, Activity, Gauge, ChevronDown, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Dumbbell, TrendingUp, Clock, MoreVertical, Pencil, Copy, Trash2, Layers, Activity, Gauge, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
 import { formatRelative, formatDate } from '@/lib/utils'
 import { useUnit } from '@/hooks/useUnit'
 import { formatWeight } from '@/lib/units'
@@ -40,9 +41,10 @@ export function ExercisePage() {
 
   const handleDelete = async () => {
     if (!id) return
+    const backPath = stats.muscle ? `/muscles/${stats.muscle.id}` : '/'
     setDeleting(true)
     await deleteExercise(id)
-    navigate('/', { replace: true })
+    navigate(backPath, { replace: true })
   }
 
   const handleRenameOpen = () => {
@@ -112,14 +114,40 @@ export function ExercisePage() {
       .sort((a, b) => b.date.localeCompare(a.date))
   }, [workouts, workoutExercises, sets])
 
-  if (!stats.exercise) return null
+  if (stats.loading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center gap-3 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} aria-label="Back">
+            <ArrowLeft size={20} />
+          </Button>
+        </div>
+        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+          <Loader2 size={16} className="mr-2 animate-spin" /> Loading…
+        </div>
+      </PageContainer>
+    )
+  }
+
+  if (!stats.exercise) {
+    return (
+      <PageContainer>
+        <div className="flex items-center gap-3 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Back to home">
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Exercise not found</h1>
+        </div>
+      </PageContainer>
+    )
+  }
 
   const backPath = stats.muscle ? `/muscles/${stats.muscle.id}` : '/'
 
   return (
     <PageContainer>
       <div className="flex items-center gap-2 sm:gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate(backPath)}>
+        <Button variant="ghost" size="icon" onClick={() => navigate(backPath)} aria-label="Back">
           <ArrowLeft size={20} />
         </Button>
         <div className="min-w-0 flex-1">
@@ -130,7 +158,7 @@ export function ExercisePage() {
         </div>
         <Badge className="shrink-0">{stats.exercise.difficulty}</Badge>
         <DropdownMenu>
-          <DropdownMenuTrigger className="ml-1">
+          <DropdownMenuTrigger aria-label={`Actions for ${stats.exercise.name}`} className="ml-1">
             <MoreVertical size={16} className="text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -219,8 +247,13 @@ export function ExercisePage() {
               return (
                 <Card
                   key={w.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
+                  aria-label={`${formatDate(w.date)} workout details`}
                   className="cursor-pointer transition-colors hover:bg-muted/20"
                   onClick={() => toggleExpanded(w.id)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(w.id) } }}
                 >
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-center justify-between mb-2 gap-2">
@@ -265,37 +298,32 @@ export function ExercisePage() {
         </div>
       )}
 
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-2">Delete Exercise?</h3>
-            <p className="text-sm text-muted-foreground mb-1">
+      <ConfirmDialog
+        open={showDeleteConfirm}
+        title="Delete Exercise?"
+        description={
+          <>
+            <p>
               This will permanently delete <strong>{stats.exercise.name}</strong>.
             </p>
-            {stats.totalSets > 0 && (
-              <p className="text-sm text-destructive mb-4">
+            {stats.totalSets > 0 ? (
+              <p className="text-destructive mt-1">
                 All associated sets, reps, history, personal records, and analytics will also be deleted.
               </p>
+            ) : (
+              <p className="mt-1">This exercise has no workout history.</p>
             )}
-            {stats.totalSets === 0 && (
-              <p className="text-sm text-muted-foreground mb-4">This exercise has no workout history.</p>
-            )}
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setShowDeleteConfirm(false)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        }
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
 
       {showRename && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-2">Rename Exercise</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="rename-exercise-title" className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
+            <h3 id="rename-exercise-title" className="text-lg font-semibold mb-2">Rename Exercise</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Enter a new name for <strong>{stats.exercise?.name}</strong>.
             </p>

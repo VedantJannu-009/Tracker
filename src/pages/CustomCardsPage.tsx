@@ -150,7 +150,7 @@ export function CustomCardsPage() {
         {cards?.map(card => (
           <div key={card.id} className="relative group">
             <CustomCard card={card} />
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-2 flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:transition-opacity">
               <Button
                 variant="ghost"
                 size="icon"

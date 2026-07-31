@@ -1,143 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Pencil, Trash2, X, Check } from 'lucide-react'
-import { formatWeight } from '@/lib/units'
-import { useIsMobile } from '@/hooks/useIsMobile'
+import { MoreVertical, Pencil, Trash2, X, Check, Trophy, History } from 'lucide-react'
+import { formatWeight, formatWeightValue } from '@/lib/units'
+import { cn, formatDate } from '@/lib/utils'
 import type { Unit } from '@/lib/units'
-import type { WorkoutSet } from '@/types'
-
-const ACTION_WIDTH = 112
-const OPEN_THRESHOLD = ACTION_WIDTH / 2
-
-interface SwipeToDeleteProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onDelete: () => void
-  children: ReactNode
-}
-
-function SwipeToDelete({ open, onOpenChange, onDelete, children }: SwipeToDeleteProps) {
-  const [offset, setOffset] = useState(0)
-  const [isDragging, setIsDragging] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const suppressClick = useRef(false)
-  const gesture = useRef<{ startX: number; startY: number; startOffset: number; dx: number; horizontal: boolean } | null>(null)
-
-  useEffect(() => {
-    if (!open && !isDragging) setOffset(0)
-  }, [open, isDragging])
-
-  useEffect(() => {
-    if (!open) return
-    const closeIfOutside = (e: TouchEvent | MouseEvent) => {
-      if (rootRef.current && e.target instanceof Node && !rootRef.current.contains(e.target)) {
-        onOpenChange(false)
-      }
-    }
-    document.addEventListener('touchstart', closeIfOutside)
-    document.addEventListener('mousedown', closeIfOutside)
-    return () => {
-      document.removeEventListener('touchstart', closeIfOutside)
-      document.removeEventListener('mousedown', closeIfOutside)
-    }
-  }, [open, onOpenChange])
-
-  const handleTouchStart = (e: ReactTouchEvent<HTMLDivElement>) => {
-    const t = e.touches[0]
-    suppressClick.current = false
-    gesture.current = {
-      startX: t.clientX,
-      startY: t.clientY,
-      startOffset: offset,
-      dx: 0,
-      horizontal: false,
-    }
-    setIsDragging(true)
-  }
-
-  const handleTouchMove = (e: ReactTouchEvent<HTMLDivElement>) => {
-    const g = gesture.current
-    if (!g) return
-    const t = e.touches[0]
-    const dx = t.clientX - g.startX
-    const dy = t.clientY - g.startY
-    if (!g.horizontal) {
-      if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 6) g.horizontal = true
-      else return
-    }
-    g.dx = dx
-    setOffset(Math.max(-ACTION_WIDTH, Math.min(0, g.startOffset + dx)))
-  }
-
-  const handleTouchEnd = () => {
-    const g = gesture.current
-    gesture.current = null
-    setIsDragging(false)
-    if (!g) {
-      setOffset(open ? -ACTION_WIDTH : 0)
-      return
-    }
-    if (!g.horizontal) {
-      if (open) {
-        setOffset(0)
-        onOpenChange(false)
-      }
-      return
-    }
-    suppressClick.current = Math.abs(g.dx) > 8
-    const target = Math.max(-ACTION_WIDTH, Math.min(0, g.startOffset + g.dx))
-    if (target <= -OPEN_THRESHOLD) {
-      setOffset(-ACTION_WIDTH)
-      onOpenChange(true)
-    } else {
-      setOffset(0)
-      onOpenChange(false)
-    }
-  }
-
-  const handleClickCapture = (e: ReactMouseEvent) => {
-    if (suppressClick.current) {
-      e.preventDefault()
-      e.stopPropagation()
-      suppressClick.current = false
-    }
-  }
-
-  return (
-    <div ref={rootRef} className="relative">
-      <div className="absolute inset-y-0 right-0" style={{ width: ACTION_WIDTH }}>
-        <button
-          type="button"
-          aria-label="Delete exercise"
-          onClick={onDelete}
-          className="w-full h-full flex flex-col items-center justify-center gap-1 bg-destructive text-white hover:brightness-110 active:brightness-110 transition-[filter]"
-        >
-          <Trash2 size={18} />
-          <span className="text-xs font-medium">Delete</span>
-        </button>
-      </div>
-      <div
-        data-testid="swipe-surface"
-        onClickCapture={handleClickCapture}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onTouchCancel={handleTouchEnd}
-        style={{
-          transform: `translateX(${offset}px)`,
-          transition: isDragging ? 'none' : 'transform 220ms cubic-bezier(0.25, 0.8, 0.25, 1)',
-          touchAction: 'pan-y',
-        }}
-        className="relative will-change-transform"
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
+import type { Exercise, WorkoutSet } from '@/types'
 
 interface ExerciseCardProps {
   name: string
@@ -145,14 +15,35 @@ interface ExerciseCardProps {
   unit: Unit
   weight: string
   reps: string
-  isOpen: boolean
-  onOpenChange: (open: boolean) => void
   onWeightChange: (value: string) => void
   onRepsChange: (value: string) => void
   onAddSet: () => void
   onRemoveSet: (setId: string) => void
   onDelete: () => void
   onEdit: () => void
+  equipment?: string
+  difficulty?: Exercise['difficulty']
+  lastWorkout?: string | null
+  pr?: { weight: number; reps: number; volume: number } | null
+  active?: boolean
+}
+
+const difficultyVariant: Record<Exercise['difficulty'], 'default' | 'success' | 'warning'> = {
+  beginner: 'success',
+  intermediate: 'warning',
+  advanced: 'default',
+}
+
+function shortRelative(date: string | number): string {
+  const d = new Date(date)
+  const today = new Date()
+  const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()
+  const startDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round((startToday - startDay) / 86400000)
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 30) return `${days}d ago`
+  return formatDate(d.toISOString())
 }
 
 export function ExerciseCard({
@@ -161,36 +52,69 @@ export function ExerciseCard({
   unit,
   weight,
   reps,
-  isOpen,
-  onOpenChange,
   onWeightChange,
   onRepsChange,
   onAddSet,
   onRemoveSet,
   onDelete,
   onEdit,
+  equipment,
+  difficulty,
+  lastWorkout,
+  pr,
+  active,
 }: ExerciseCardProps) {
-  const isMobile = useIsMobile()
+  const prWeight = pr?.weight ? formatWeightValue(pr.weight, unit) : null
 
-  const card = (
-    <Card>
+  return (
+    <Card
+      className={cn(
+        'relative overflow-hidden transition-all duration-200',
+        active && 'border-primary/40 ring-2 ring-primary/20 shadow-lg shadow-primary/10'
+      )}
+    >
+      {active && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" aria-hidden="true" />}
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-sm truncate pr-2">{name}</h3>
-          {!isMobile && (
-            <DropdownMenu>
-              <DropdownMenuTrigger aria-label={`Actions for ${name}`} className="-mr-1 shrink-0">
-                <MoreVertical size={16} className="text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem onClick={onEdit}>
-                  <Pencil size={14} /> Edit Exercise
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                  <Trash2 size={14} /> Delete Exercise
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-sm truncate pr-2">{name}</h3>
+            {(equipment || difficulty) && (
+              <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                {equipment && <Badge variant="default">{equipment}</Badge>}
+                {difficulty && <Badge variant={difficultyVariant[difficulty]} className="capitalize">{difficulty}</Badge>}
+              </div>
+            )}
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger aria-label={`Actions for ${name}`} className="-mr-1 shrink-0">
+              <MoreVertical size={16} className="text-muted-foreground" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil size={14} /> Edit Exercise
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                <Trash2 size={14} /> Delete Exercise
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 mb-3 text-[11px]">
+          <span className="flex items-center gap-1 text-muted-foreground min-w-0">
+            {lastWorkout ? (
+              <>
+                <History size={11} className="shrink-0" />
+                <span className="truncate">Last {shortRelative(lastWorkout)}</span>
+              </>
+            ) : (
+              <span className="truncate">No previous workout</span>
+            )}
+          </span>
+          {prWeight && (
+            <span className="flex items-center gap-1 font-semibold text-primary shrink-0">
+              <Trophy size={11} /> PR {prWeight} {unit}
+            </span>
           )}
         </div>
 
@@ -245,13 +169,5 @@ export function ExerciseCard({
         </div>
       </CardContent>
     </Card>
-  )
-
-  return isMobile ? (
-    <SwipeToDelete open={isOpen} onOpenChange={onOpenChange} onDelete={onDelete}>
-      {card}
-    </SwipeToDelete>
-  ) : (
-    card
   )
 }

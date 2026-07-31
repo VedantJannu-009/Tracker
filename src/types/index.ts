@@ -10,6 +10,7 @@ export interface Exercise {
   muscleGroupId: string
   equipment: string
   difficulty: 'beginner' | 'intermediate' | 'advanced'
+  createdAt?: number
 }
 
 export interface Workout {
@@ -90,6 +91,7 @@ export interface AppSettings {
   unit: 'kg' | 'lbs'
   soundEnabled: boolean
   restTimer: number
+  seeded?: boolean
 }
 
 export interface WeeklyGoal {

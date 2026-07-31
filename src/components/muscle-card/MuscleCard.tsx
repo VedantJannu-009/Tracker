@@ -14,7 +14,11 @@ export function MuscleCard({ muscle }: MuscleCardProps) {
 
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={() => navigate(`/muscles/${muscle.id}`)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/muscles/${muscle.id}`) } }}
+      aria-label={`Open ${muscle.name}`}
       className="rounded-2xl bg-card border border-border/50 card-glow p-3 sm:p-4 cursor-pointer hover:bg-muted/20 transition-colors"
     >
       <div className="flex items-center justify-between gap-2">

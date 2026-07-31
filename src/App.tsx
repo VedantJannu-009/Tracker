@@ -1,7 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { BottomNav } from '@/components/layout/BottomNav'
+import { SplashScreen } from '@/components/launch/SplashScreen'
+import { WelcomeOverlay } from '@/components/launch/WelcomeOverlay'
 import { Toaster } from '@/components/ui/toast'
+import { useLaunchStore } from '@/stores/launchStore'
 
 const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })))
 const MusclePage = lazy(() => import('@/pages/MusclePage').then(m => ({ default: m.MusclePage })))
@@ -25,6 +28,7 @@ function PageLoader() {
 }
 
 export default function App() {
+  const phase = useLaunchStore(s => s.phase)
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
       <Suspense fallback={<PageLoader />}>
@@ -46,6 +50,8 @@ export default function App() {
       </Suspense>
       <BottomNav />
       <Toaster />
+      {phase !== 'done' && <SplashScreen />}
+      <WelcomeOverlay />
     </div>
   )
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -21,6 +21,11 @@ export function WeeklyGoalsPage() {
   const [targets, setTargets] = useState<Record<string, number>>({})
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const savedTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => () => {
+    if (savedTimeoutRef.current !== null) window.clearTimeout(savedTimeoutRef.current)
+  }, [])
 
   useEffect(() => {
     if (!existingGoals || !muscleGroups) return
@@ -55,7 +60,8 @@ export function WeeklyGoalsPage() {
     await Promise.all(batch)
     setSaving(false)
     setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    if (savedTimeoutRef.current !== null) window.clearTimeout(savedTimeoutRef.current)
+    savedTimeoutRef.current = window.setTimeout(() => setSaved(false), 2000)
   }
 
   if (!muscleGroups) return null
@@ -63,7 +69,7 @@ export function WeeklyGoalsPage() {
   return (
     <PageContainer>
       <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0" aria-label="Back">
           <ArrowLeft size={20} />
         </Button>
         <div className="min-w-0">

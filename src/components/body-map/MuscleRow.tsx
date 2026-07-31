@@ -11,7 +11,11 @@ export function MuscleRow({ muscle, onClick }: MuscleRowProps) {
   const stats = useMuscleStats(muscle.id)
   return (
     <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } }}
+      aria-label={`Open ${muscle.name}`}
       className="flex items-center justify-between p-3 rounded-xl bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors gap-2"
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">

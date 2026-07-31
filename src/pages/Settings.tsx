@@ -15,7 +15,7 @@ import { toast } from '@/stores/toastStore'
 
 export function SettingsPage() {
   const { theme, setTheme } = useThemeStore()
-  const settings = useLiveQuery(() => db.settings.get('default' as any))
+  const settings = useLiveQuery(() => db.settings.get('default'))
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const updateSettings = async (partial: Partial<AppSettings>) => {

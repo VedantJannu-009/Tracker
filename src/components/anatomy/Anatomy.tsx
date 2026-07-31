@@ -86,6 +86,7 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
 
     chartRef.current = chart
     return () => {
+      clearTimeout(clickTimeoutRef.current)
       chart.destroy()
       chartRef.current = null
     }

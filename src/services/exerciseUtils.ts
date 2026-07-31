@@ -46,6 +46,7 @@ export async function duplicateExercise(exerciseId: string): Promise<string> {
     ...exercise,
     id: newId,
     name: `${exercise.name} (copy)`,
+    createdAt: Date.now(),
   }
 
   await db.exercises.add(copy)

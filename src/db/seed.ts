@@ -130,9 +130,21 @@ async function migrateExercisesById() {
   }
 }
 
+const SEED_EXERCISE_EPOCH = Date.UTC(2024, 0, 1)
+
+async function migrateExerciseCreatedAt() {
+  const missing = (await db.exercises.toArray()).filter(ex => typeof ex.createdAt !== 'number')
+  if (missing.length === 0) return
+  const backfill = Date.now() - missing.length
+  for (let i = 0; i < missing.length; i++) {
+    await db.exercises.update(missing[i].id, { createdAt: backfill + i })
+  }
+}
+
 export async function initializeDatabase() {
   await seedDatabase()
   await migrateMuscleGroups()
+  await migrateExerciseCreatedAt()
   await migrateDuplicatePersonalRecords()
   await migrateCustomCardFlags()
 }
@@ -153,7 +165,12 @@ async function migrateDuplicatePersonalRecords() {
   const toDelete: string[] = []
 
   records
-    .sort((a, b) => b.value - a.value || a.achievedAt.localeCompare(b.achievedAt))
+    .sort((a, b) => {
+      if (b.value !== a.value) return b.value - a.value
+      if (typeof a.achievedAt !== 'string') return -1
+      if (typeof b.achievedAt !== 'string') return 1
+      return a.achievedAt.localeCompare(b.achievedAt)
+    })
     .forEach((r) => {
       const key = `${r.exerciseId}:${r.type}`
       if (seen.has(key)) {
@@ -169,16 +186,19 @@ async function migrateDuplicatePersonalRecords() {
 }
 
 async function seedDatabase() {
+  const settings = await db.settings.get('default')
+  if (settings?.seeded) return
+
   const existing = await db.exercises.count()
   if (existing === 0) {
-    await db.muscleGroups.bulkAdd(defaultMuscleGroups)
-    await db.exercises.bulkAdd(defaultExercises)
+    await db.muscleGroups.bulkPut(defaultMuscleGroups)
+    await db.exercises.bulkAdd(defaultExercises.map((ex, i) => ({ ...ex, createdAt: SEED_EXERCISE_EPOCH + i })))
   }
 
-  const settings = await db.settings.get('default')
   if (!settings) {
     await db.settings.put({ id: 'default', theme: 'system', unit: 'kg', soundEnabled: true, restTimer: 90 })
   }
+  await db.settings.update('default', { seeded: true })
 }
 
 async function migrateMuscleGroups() {
@@ -192,18 +212,4 @@ async function migrateMuscleGroups() {
   await migrateExercisesById()
 
   await db.muscleGroups.bulkDelete(OLD_MUSCLE_GROUP_IDS)
-
-  for (const mg of defaultMuscleGroups) {
-    const exists = await db.muscleGroups.get(mg.id)
-    if (!exists) {
-      await db.muscleGroups.add(mg)
-    }
-  }
-
-  for (const ex of defaultExercises) {
-    const exists = await db.exercises.get(ex.id)
-    if (!exists) {
-      await db.exercises.add(ex)
-    }
-  }
 }

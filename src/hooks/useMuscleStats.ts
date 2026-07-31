@@ -153,6 +153,7 @@ export function useMuscleStats(muscleGroupId: string) {
       sets,
       workouts,
       personalRecords,
+      loading: data === undefined,
       totalSets,
       totalReps,
       totalVolume,

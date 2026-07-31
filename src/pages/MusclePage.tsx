@@ -1,11 +1,13 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { useMuscleStats } from '@/hooks/useMuscleStats'
+import { useIsMobile } from '@/hooks/useIsMobile'
 import { deleteExercise, renameExercise } from '@/services/exerciseUtils'
+import { sortExercisesByRecency } from '@/lib/exerciseOrdering'
 import { detectPersonalRecords } from '@/services/prDetection'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -67,7 +69,8 @@ function SetRow({
       </div>
       <button
         onClick={() => onDelete(set.id)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive min-w-[28px] min-h-[28px] flex items-center justify-center"
+        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive min-w-[28px] min-h-[28px] flex items-center justify-center"
+        aria-label="Delete set"
       >
         <X size={14} />
       </button>
@@ -149,6 +152,7 @@ function AvailableExerciseCard({
   bestWeight,
   totalSets,
   unit,
+  isMobile,
   onAddToWorkout,
   onDelete,
   onRename,
@@ -158,14 +162,25 @@ function AvailableExerciseCard({
   bestWeight: number
   totalSets: number
   unit: Unit
+  isMobile: boolean
   onAddToWorkout: (exerciseId: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
 }) {
   const navigate = useNavigate()
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 group">
-      <div onClick={() => navigate(`/exercise/${exercise.id}`)} className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 cursor-pointer">
+    <div
+      data-testid="available-exercise"
+      className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/30 group"
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => navigate(`/exercise/${exercise.id}`)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/exercise/${exercise.id}`) } }}
+        aria-label={`Open ${exercise.name}`}
+        className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 cursor-pointer"
+      >
         <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
           <Dumbbell size={14} className="text-muted-foreground" />
         </div>
@@ -186,7 +201,10 @@ function AvailableExerciseCard({
       </div>
       <div className="flex items-center gap-1 shrink-0 ml-1 sm:ml-2">
         <DropdownMenu>
-          <DropdownMenuTrigger className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenuTrigger
+            aria-label={`Actions for ${exercise.name}`}
+            className={isMobile ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}
+          >
             <MoreVertical size={14} className="text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent>
@@ -227,6 +245,7 @@ function AddExerciseForm({ muscleId, onCreated }: { muscleId: string; onCreated:
       muscleGroupId: muscleId,
       equipment,
       difficulty,
+      createdAt: Date.now(),
     }
     await db.exercises.add(exercise)
     setName('')
@@ -250,7 +269,7 @@ function AddExerciseForm({ muscleId, onCreated }: { muscleId: string; onCreated:
       <CardContent className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">New Exercise</span>
-          <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted/50">
+          <button onClick={() => setOpen(false)} className="p-1 rounded hover:bg-muted/50" aria-label="Close">
             <X size={14} />
           </button>
         </div>
@@ -294,9 +313,9 @@ function AddExerciseForm({ muscleId, onCreated }: { muscleId: string; onCreated:
 export function MusclePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const muscle = useLiveQuery(() => id ? db.muscleGroups.get(id) : undefined, [id])
-  const allExercises = useLiveQuery(() => id ? db.exercises.where('muscleGroupId').equals(id).toArray() : [], [id])
   const stats = useMuscleStats(id ?? '')
+  const muscle = stats.muscle
+  const allExercises = stats.exercises
   const unit = useUnit()
   const [workoutId, setWorkoutId] = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
@@ -307,6 +326,7 @@ export function MusclePage() {
   const [renameTarget, setRenameTarget] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const [renaming, setRenaming] = useState(false)
+  const isMobile = useIsMobile()
 
   const savingRef = useRef(false)
   const workoutIdRef = useRef<string | null>(null)
@@ -351,8 +371,37 @@ export function MusclePage() {
     workoutIdRef.current = workoutId
   }, [workoutId])
 
+  const cleanupEmptyWorkout = useCallback(async () => {
+    const wid = workoutIdRef.current
+    if (!wid) return
+    const remaining = await db.workoutExercises.where('workoutId').equals(wid).count()
+    if (remaining === 0) {
+      await db.workouts.delete(wid)
+      workoutIdRef.current = null
+      setWorkoutId(null)
+    }
+  }, [])
+
   const inWorkoutIds = new Set(sessionExercises.map(se => se.exercise.id))
-  const availableExercises = allExercises?.filter(ex => !inWorkoutIds.has(ex.id)) ?? []
+  const lastLoggedByExercise = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of stats.exerciseStatsList) {
+      if (s.lastDate) map.set(s.exercise.id, s.lastDate)
+    }
+    return map
+  }, [stats.exerciseStatsList])
+  const exerciseStatMap = useMemo(() => {
+    const map = new Map<string, { lastDate: string | null; bestWeight: number; totalSets: number }>()
+    for (const s of stats.exerciseStatsList) {
+      map.set(s.exercise.id, { lastDate: s.lastDate, bestWeight: s.bestWeight, totalSets: s.totalSets })
+    }
+    return map
+  }, [stats.exerciseStatsList])
+  const sortedExercises = useMemo(
+    () => sortExercisesByRecency(allExercises ?? [], lastLoggedByExercise),
+    [allExercises, lastLoggedByExercise]
+  )
+  const availableExercises = sortedExercises.filter(ex => !inWorkoutIds.has(ex.id))
 
   const ensureWorkout = useCallback(async () => {
     if (workoutIdRef.current) return workoutIdRef.current
@@ -372,12 +421,13 @@ export function MusclePage() {
     const exercise = allExercises?.find(e => e.id === exerciseId)
     if (!exercise || savingRef.current) return
     const wid = await ensureWorkout()
+    const nextOrder = sessionExercisesRef.current.length
     const weId = generateId()
     await db.workoutExercises.add({
       id: weId,
       workoutId: wid,
       exerciseId,
-      order: 0,
+      order: nextOrder,
     })
     const emptySetId = generateId()
     const firstSet: WorkoutSet = {
@@ -427,6 +477,13 @@ export function MusclePage() {
 
     await db.workoutSets.delete(setId)
 
+    if (remaining.length === 0 && exercise) {
+      await db.workoutExercises.delete(exercise.workoutExerciseId)
+      await cleanupEmptyWorkout()
+      setSessionExercises(prev => prev.filter(e => e.workoutExerciseId !== exercise.workoutExerciseId))
+      return
+    }
+
     // Renumber remaining sets in DB
     await Promise.all(remaining.map((s, i) => db.workoutSets.update(s.id, { order: i })))
 
@@ -444,14 +501,15 @@ export function MusclePage() {
       })
       return updated.filter(e => e.sets.length > 0)
     })
-  }, [])
+  }, [cleanupEmptyWorkout])
 
   const removeFromWorkout = useCallback(async (workoutExerciseId: string) => {
     const sets = await db.workoutSets.where('workoutExerciseId').equals(workoutExerciseId).toArray()
     await db.workoutSets.bulkDelete(sets.map(s => s.id))
     await db.workoutExercises.delete(workoutExerciseId)
     setSessionExercises(prev => prev.filter(e => e.workoutExerciseId !== workoutExerciseId))
-  }, [])
+    await cleanupEmptyWorkout()
+  }, [cleanupEmptyWorkout])
 
   const saveWorkout = useCallback(async () => {
     const wid = workoutIdRef.current
@@ -476,11 +534,26 @@ export function MusclePage() {
 
   const totalSetsAcrossExercises = sessionExercises.reduce((sum, e) => sum + e.sets.length, 0)
 
+  if (stats.loading) {
+    return (
+      <PageContainer>
+        <div className="flex items-center gap-3 mb-6">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Back to home">
+            <ArrowLeft size={20} />
+          </Button>
+        </div>
+        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
+          <Loader2 size={16} className="mr-2 animate-spin" /> Loading…
+        </div>
+      </PageContainer>
+    )
+  }
+
   if (!muscle) {
     return (
       <PageContainer>
         <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Back to home">
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">Muscle not found</h1>
@@ -492,7 +565,7 @@ export function MusclePage() {
   return (
     <PageContainer>
       <div className="flex items-center gap-2 mb-4">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/')}>
+        <Button variant="ghost" size="icon" onClick={() => navigate('/')} aria-label="Back to home">
           <ArrowLeft size={20} />
         </Button>
         <div className="text-sm text-muted-foreground">
@@ -564,7 +637,7 @@ export function MusclePage() {
             </div>
             <div className="space-y-2">
               {availableExercises.map(ex => {
-                const exStat = stats.exerciseStatsList.find(s => s.exercise.id === ex.id)
+                const exStat = exerciseStatMap.get(ex.id)
                 return (
                   <AvailableExerciseCard
                     key={ex.id}
@@ -573,6 +646,7 @@ export function MusclePage() {
                     bestWeight={exStat?.bestWeight ?? 0}
                     totalSets={exStat?.totalSets ?? 0}
                     unit={unit}
+                    isMobile={isMobile}
                     onAddToWorkout={addToWorkout}
                     onDelete={setDeleteTarget}
                     onRename={handleRenameOpen}
@@ -602,32 +676,28 @@ export function MusclePage() {
         )}
       </div>
 
-      {deleteTarget && deleteTargetExercise && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-2">Delete Exercise?</h3>
-            <p className="text-sm text-muted-foreground mb-1">
-              This will permanently delete <strong>{deleteTargetExercise.name}</strong>.
+      <ConfirmDialog
+        open={!!deleteTarget && !!deleteTargetExercise}
+        title="Delete Exercise?"
+        description={
+          <>
+            <p>
+              This will permanently delete <strong>{deleteTargetExercise?.name}</strong>.
             </p>
-            <p className="text-sm text-destructive mb-4">
+            <p className="text-destructive mt-1">
               All associated sets, reps, history, personal records, and analytics will also be deleted.
             </p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" size="sm" onClick={() => setDeleteTarget(null)} disabled={deleting}>
-                Cancel
-              </Button>
-              <Button variant="destructive" size="sm" onClick={handleDelete} disabled={deleting}>
-                {deleting ? 'Deleting...' : 'Delete'}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        }
+        busy={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
 
       {renameTarget && renameTargetExercise && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
-            <h3 className="text-lg font-semibold mb-2">Rename Exercise</h3>
+          <div role="dialog" aria-modal="true" aria-labelledby="rename-exercise-title" className="w-full max-w-sm rounded-2xl bg-background border border-border p-6 shadow-xl">
+            <h3 id="rename-exercise-title" className="text-lg font-semibold mb-2">Rename Exercise</h3>
             <p className="text-sm text-muted-foreground mb-3">
               Enter a new name for <strong>{renameTargetExercise.name}</strong>.
             </p>
