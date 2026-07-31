@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
+import { toLocalDateKey } from '@/lib/dates'
 
 interface CardStats {
   totalSets: number
@@ -58,7 +59,7 @@ export function useCustomCardStats(muscleGroupIds: string[]): CardStats {
         const workout = workouts.find(w => w.id === we.workoutId)
         if (!muscleId || !workout) continue
 
-        const dateKey = workout.date.split('T')[0]
+        const dateKey = toLocalDateKey(workout.date)
         if (!volumeByMuscle.has(muscleId)) volumeByMuscle.set(muscleId, new Map())
         const dayMap = volumeByMuscle.get(muscleId)!
         const exerciseSets = sets.filter(s => s.workoutExerciseId === we.id)

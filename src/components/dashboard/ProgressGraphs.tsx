@@ -6,6 +6,7 @@ import { BarChart } from '@/components/charts/BarChart'
 import { PieChart } from '@/components/charts/PieChart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Flame, TrendingUp, Dumbbell, Activity, Trophy } from 'lucide-react'
+import { toLocalDateKey } from '@/lib/dates'
 
 type Range = 7 | 30 | 90 | 365
 
@@ -17,7 +18,7 @@ const RANGES: { label: string; days: Range }[] = [
 ]
 
 function getDateKey(d: Date): string {
-  return d.toISOString().split('T')[0]
+  return toLocalDateKey(d)
 }
 
 function getWeekKey(d: Date): string {
@@ -113,7 +114,7 @@ export function ProgressGraphs() {
     const prData = (personalRecords ?? [])
       .filter(pr => new Date(pr.achievedAt).getTime() >= cutoff)
       .sort((a, b) => new Date(a.achievedAt).getTime() - new Date(b.achievedAt).getTime())
-      .map(pr => ({ label: pr.achievedAt.split('T')[0].slice(5), value: pr.value }))
+      .map(pr => ({ label: toLocalDateKey(pr.achievedAt).slice(5), value: pr.value }))
 
     return { weeklyFreq, weeklySets, weeklyReps, muscleFreqData, prData, streak, workoutCount: recentWorkouts.length }
   }, [allWorkouts, allWorkoutExercises, allSets, allExercises, muscleGroups, personalRecords, cutoff])

@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import type { MuscleGroup, Exercise, WorkoutExercise, WorkoutSet, Workout, PersonalRecord } from '@/types'
+import { toLocalDateKey } from '@/lib/dates'
 
 interface MuscleQueryResult {
   muscle: MuscleGroup | undefined
@@ -67,7 +68,7 @@ export function useMuscleStats(muscleGroupId: string) {
       for (const we of workoutExercises) {
         const w = workouts.find(wk => wk.id === we.workoutId)
         if (!w) continue
-        const dateKey = w.date.split('T')[0]
+        const dateKey = toLocalDateKey(w.date)
         const exerciseSets = sets.filter(s => s.workoutExerciseId === we.id)
         const vol = exerciseSets.reduce((sum, s) => sum + s.weight * s.reps, 0)
         map.set(dateKey, (map.get(dateKey) ?? 0) + vol)
@@ -91,17 +92,17 @@ export function useMuscleStats(muscleGroupId: string) {
       setsByDate: sortedWorkouts.map(w => {
         const wes = workoutExercises.filter(we => we.workoutId === w.id)
         const exerciseSets = wes.flatMap(we => sets.filter(s => s.workoutExerciseId === we.id))
-        return { label: w.date.split('T')[0], value: exerciseSets.length }
+        return { label: toLocalDateKey(w.date), value: exerciseSets.length }
       }),
       repsByDate: sortedWorkouts.map(w => {
         const wes = workoutExercises.filter(we => we.workoutId === w.id)
         const exerciseSets = wes.flatMap(we => sets.filter(s => s.workoutExerciseId === we.id))
-        return { label: w.date.split('T')[0], value: exerciseSets.reduce((sum, s) => sum + s.reps, 0) }
+        return { label: toLocalDateKey(w.date), value: exerciseSets.reduce((sum, s) => sum + s.reps, 0) }
       }),
       volumeByDate: sortedWorkouts.map(w => {
         const wes = workoutExercises.filter(we => we.workoutId === w.id)
         const exerciseSets = wes.flatMap(we => sets.filter(s => s.workoutExerciseId === we.id))
-        return { label: w.date.split('T')[0], value: exerciseSets.reduce((sum, s) => sum + s.weight * s.reps, 0) }
+        return { label: toLocalDateKey(w.date), value: exerciseSets.reduce((sum, s) => sum + s.weight * s.reps, 0) }
       }),
     }
 

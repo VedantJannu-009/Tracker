@@ -1,5 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
+import { toLocalDateKey } from '@/lib/dates'
 
 export function useExerciseStats(exerciseId: string) {
   const exercise = useLiveQuery(() => db.exercises.get(exerciseId))
@@ -32,7 +33,7 @@ export function useExerciseStats(exerciseId: string) {
     for (const we of workoutExercises) {
       const w = workouts.find(w => w.id === we.workoutId)
       if (!w) continue
-      const dateKey = w.date.split('T')[0]
+      const dateKey = toLocalDateKey(w.date)
       const exerciseSets = sets.filter(s => s.workoutExerciseId === we.id)
       const totalWeight = exerciseSets.reduce((sum, s) => Math.max(sum, s.weight), 0)
       const totalSets = exerciseSets.length

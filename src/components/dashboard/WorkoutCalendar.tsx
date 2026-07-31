@@ -3,9 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { ChevronLeft, ChevronRight, Dumbbell } from 'lucide-react'
+import { toLocalDateKey } from '@/lib/dates'
 
 function getDateKey(dateStr: string): string {
-  return dateStr.split('T')[0]
+  return toLocalDateKey(dateStr)
 }
 
 function buildMonthDays(year: number, month: number): (number | null)[] {

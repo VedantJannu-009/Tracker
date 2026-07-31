@@ -3,9 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { Flame, TrendingUp, Dumbbell, Activity, Trophy } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { toLocalDateKey } from '@/lib/dates'
 
 function getDateKey(d: Date): string {
-  return d.toISOString().split('T')[0]
+  return toLocalDateKey(d)
 }
 
 function computeStreak(workoutDateKeys: Set<string>): number {

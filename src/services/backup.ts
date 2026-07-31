@@ -1,5 +1,6 @@
 import { db } from '@/db/schema'
 import type { Table } from 'dexie'
+import { toLocalDateKey } from '@/lib/dates'
 import type {
   Exercise,
   Workout,
@@ -53,7 +54,7 @@ export function downloadBackup(data: BackupData) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
+  a.download = `gym-tracker-backup-${toLocalDateKey(new Date())}.json`
   a.click()
   URL.revokeObjectURL(url)
 }

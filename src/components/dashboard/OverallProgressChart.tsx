@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { AreaChart as RechartsAreaChart, Area, ResponsiveContainer, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
+import { toLocalDateKey } from '@/lib/dates'
 
 type Range = 7 | 30 | 90 | 180 | 365
 type Metric = 'sets' | 'reps' | 'frequency'
@@ -22,7 +23,7 @@ const METRICS: { label: string; value: Metric }[] = [
 ]
 
 function getDateKey(d: Date): string {
-  return d.toISOString().split('T')[0]
+  return toLocalDateKey(d)
 }
 
 export function OverallProgressChart() {
