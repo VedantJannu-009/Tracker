@@ -133,6 +133,39 @@ async function migrateExercisesById() {
 export async function initializeDatabase() {
   await seedDatabase()
   await migrateMuscleGroups()
+  await migrateDuplicatePersonalRecords()
+  await migrateCustomCardFlags()
+}
+
+async function migrateCustomCardFlags() {
+  const cards = await db.customCards.toArray()
+  const updates = cards
+    .filter(c => typeof c.pinned !== 'boolean' || typeof c.collapsed !== 'boolean')
+    .map(c => ({ id: c.id, pinned: Boolean(c.pinned), collapsed: Boolean(c.collapsed) }))
+  for (const u of updates) {
+    await db.customCards.update(u.id, { pinned: u.pinned, collapsed: u.collapsed })
+  }
+}
+
+async function migrateDuplicatePersonalRecords() {
+  const records = await db.personalRecords.toArray()
+  const seen = new Set<string>()
+  const toDelete: string[] = []
+
+  records
+    .sort((a, b) => b.value - a.value || a.achievedAt.localeCompare(b.achievedAt))
+    .forEach((r) => {
+      const key = `${r.exerciseId}:${r.type}`
+      if (seen.has(key)) {
+        toDelete.push(r.id)
+      } else {
+        seen.add(key)
+      }
+    })
+
+  if (toDelete.length) {
+    await db.personalRecords.bulkDelete(toDelete)
+  }
 }
 
 async function seedDatabase() {

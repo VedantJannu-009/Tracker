@@ -6,9 +6,12 @@ import { ArrowLeft, Trophy, Dumbbell, Activity, TrendingUp } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { useUnit } from '@/hooks/useUnit'
+import { formatWeight } from '@/lib/units'
 
 export function PersonalRecordsPage() {
   const navigate = useNavigate()
+  const unit = useUnit()
   const prs = useLiveQuery(() => db.personalRecords.orderBy('achievedAt').reverse().toArray())
   const exercises = useLiveQuery(() => db.exercises.toArray())
 
@@ -71,8 +74,8 @@ export function PersonalRecordsPage() {
                           <div className="text-xs text-muted-foreground">{formatDate(pr.achievedAt)}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-lg font-bold text-success">{pr.value}</div>
-                          <div className="text-xs text-muted-foreground">{pr.type === 'reps' ? 'reps' : 'kg'}</div>
+                          <div className="text-lg font-bold text-success">{pr.type === 'reps' ? pr.value : formatWeight(pr.value, unit)}</div>
+                          <div className="text-xs text-muted-foreground">{pr.type === 'reps' ? 'reps' : unit}</div>
                         </div>
                       </div>
                     </CardContent>

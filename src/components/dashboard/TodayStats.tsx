@@ -11,7 +11,7 @@ function getDateKey(d: Date): string {
 function computeStreak(workoutDateKeys: Set<string>): number {
   let streak = 0
   const today = new Date()
-  let cursor = new Date(today)
+  const cursor = new Date(today)
   while (true) {
     const key = getDateKey(cursor)
     if (workoutDateKeys.has(key)) {

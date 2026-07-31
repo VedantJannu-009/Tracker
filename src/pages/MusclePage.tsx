@@ -14,6 +14,8 @@ import { Input } from '@/components/ui/input'
 import { ArrowLeft, Dumbbell, Activity, Trophy, Clock, Plus, Trash2, Check, X, Save, Loader2, MoreVertical, Pencil, ChevronRight } from 'lucide-react'
 import { formatRelative, generateId } from '@/lib/utils'
 import type { Exercise, WorkoutSet } from '@/types'
+import { useUnit } from '@/hooks/useUnit'
+import { unitToKg, formatWeight, formatWeightValue, type Unit } from '@/lib/units'
 
 interface SessionExercise {
   workoutExerciseId: string
@@ -28,10 +30,12 @@ function DifficultyBadge({ difficulty }: { difficulty: string }) {
 
 function SetRow({
   set,
+  unit,
   onUpdate,
   onDelete,
 }: {
   set: WorkoutSet
+  unit: Unit
   onUpdate: (id: string, weight: number, reps: number) => void
   onDelete: (id: string) => void
 }) {
@@ -43,12 +47,12 @@ function SetRow({
           type="number"
           min={0}
           step={0.5}
-          value={set.weight || ''}
-          onChange={e => onUpdate(set.id, parseFloat(e.target.value) || 0, set.reps)}
+          value={set.weight ? formatWeightValue(set.weight, unit) : ''}
+          onChange={e => onUpdate(set.id, unitToKg(parseFloat(e.target.value) || 0, unit), set.reps)}
           className="h-8 w-14 sm:w-20 text-xs text-right [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           placeholder="0"
         />
-        <span className="text-[10px] sm:text-xs text-muted-foreground shrink-0">kg</span>
+        <span className="text-[10px] sm:text-xs text-muted-foreground shrink-0">{unit}</span>
         <span className="text-[10px] sm:text-xs text-muted-foreground mx-0.5 shrink-0">x</span>
         <Input
           type="number"
@@ -73,12 +77,14 @@ function SetRow({
 
 function ExerciseWorkoutCard({
   sessionExercise,
+  unit,
   onAddSet,
   onUpdateSet,
   onDeleteSet,
   onRemoveFromWorkout,
 }: {
   sessionExercise: SessionExercise
+  unit: Unit
   onAddSet: (workoutExerciseId: string) => void
   onUpdateSet: (setId: string, weight: number, reps: number) => void
   onDeleteSet: (setId: string) => void
@@ -115,6 +121,7 @@ function ExerciseWorkoutCard({
             <SetRow
               key={set.id}
               set={set}
+              unit={unit}
               onUpdate={onUpdateSet}
               onDelete={onDeleteSet}
             />
@@ -141,6 +148,7 @@ function AvailableExerciseCard({
   lastDate,
   bestWeight,
   totalSets,
+  unit,
   onAddToWorkout,
   onDelete,
   onRename,
@@ -149,6 +157,7 @@ function AvailableExerciseCard({
   lastDate: string | null
   bestWeight: number
   totalSets: number
+  unit: Unit
   onAddToWorkout: (exerciseId: string) => void
   onDelete: (id: string) => void
   onRename: (id: string, name: string) => void
@@ -166,7 +175,7 @@ function AvailableExerciseCard({
             <span>{exercise.equipment}</span>
             <DifficultyBadge difficulty={exercise.difficulty} />
             {totalSets > 0 && (
-              <span className="text-primary/80">{bestWeight > 0 ? `${bestWeight} kg` : `${totalSets} sets`}</span>
+              <span className="text-primary/80">{bestWeight > 0 ? formatWeight(bestWeight, unit) : `${totalSets} sets`}</span>
             )}
             {lastDate && (
               <span className="hidden sm:inline">{formatRelative(lastDate)}</span>
@@ -288,6 +297,7 @@ export function MusclePage() {
   const muscle = useLiveQuery(() => id ? db.muscleGroups.get(id) : undefined, [id])
   const allExercises = useLiveQuery(() => id ? db.exercises.where('muscleGroupId').equals(id).toArray() : [], [id])
   const stats = useMuscleStats(id ?? '')
+  const unit = useUnit()
   const [workoutId, setWorkoutId] = useState<string | null>(null)
   const [sessionExercises, setSessionExercises] = useState<SessionExercise[]>([])
   const [saving, setSaving] = useState(false)
@@ -449,6 +459,11 @@ export function MusclePage() {
     savingRef.current = true
     setSaving(true)
     try {
+      const workout = await db.workouts.get(wid)
+      if (workout) {
+        const duration = Math.max(1, Math.round((Date.now() - workout.createdAt) / 60000))
+        await db.workouts.update(wid, { duration })
+      }
       await detectPersonalRecords(wid)
       workoutIdRef.current = null
       setWorkoutId(null)
@@ -509,7 +524,7 @@ export function MusclePage() {
             </div>
           </div>
           <div className="text-center">
-            <div className="text-base sm:text-lg font-bold truncate">{stats.bestSet ? `${stats.bestSet.weight} kg` : '-'}</div>
+            <div className="text-base sm:text-lg font-bold truncate">{stats.bestSet ? formatWeight(stats.bestSet.weight, unit) : '-'}</div>
             <div className="flex items-center justify-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
               <Trophy size={10} />
               Best
@@ -530,6 +545,7 @@ export function MusclePage() {
           <ExerciseWorkoutCard
             key={se.workoutExerciseId}
             sessionExercise={se}
+            unit={unit}
             onAddSet={addSet}
             onUpdateSet={updateSet}
             onDeleteSet={deleteSet}
@@ -556,6 +572,7 @@ export function MusclePage() {
                     lastDate={exStat?.lastDate ?? null}
                     bestWeight={exStat?.bestWeight ?? 0}
                     totalSets={exStat?.totalSets ?? 0}
+                    unit={unit}
                     onAddToWorkout={addToWorkout}
                     onDelete={setDeleteTarget}
                     onRename={handleRenameOpen}

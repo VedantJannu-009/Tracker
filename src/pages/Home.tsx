@@ -15,7 +15,7 @@ export function Home() {
   const muscleGroups = useLiveQuery(() => db.muscleGroups.toArray())
   const customCards = useLiveQuery(async () => {
     const all = await db.customCards.toArray()
-    return all.filter(c => c.pinned === 1)
+    return all.filter(c => c.pinned)
   })
 
   return (

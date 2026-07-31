@@ -29,7 +29,7 @@ function getWeekKey(d: Date): string {
 function computeStreak(dates: Set<string>): number {
   let streak = 0
   const today = new Date()
-  let cursor = new Date(today)
+  const cursor = new Date(today)
   while (true) {
     const key = getDateKey(cursor)
     if (dates.has(key)) {

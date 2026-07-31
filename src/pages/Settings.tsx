@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 import { useThemeStore } from '@/stores/themeStore'
@@ -10,40 +10,24 @@ import {
   Moon, Sun, Monitor, Weight, Download, Upload, Trash2, Check
 } from 'lucide-react'
 import type { AppSettings } from '@/types'
+import { exportBackup, downloadBackup, importBackup } from '@/services/backup'
+import { toast } from '@/stores/toastStore'
 
 export function SettingsPage() {
   const { theme, setTheme } = useThemeStore()
   const settings = useLiveQuery(() => db.settings.get('default' as any))
-  const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const updateSettings = async (partial: Partial<AppSettings>) => {
     const current = settings ?? { id: 'default', theme: 'system', unit: 'kg', soundEnabled: true, restTimer: 90 }
     await db.settings.put({ ...current, ...partial })
-    setMessage('Saved')
-    setTimeout(() => setMessage(''), 2000)
+    toast('Saved')
   }
 
   const handleExport = async () => {
-    const data = {
-      workouts: await db.workouts.toArray(),
-      workoutExercises: await db.workoutExercises.toArray(),
-      workoutSets: await db.workoutSets.toArray(),
-      goals: await db.goals.toArray(),
-      weeklyGoals: await db.weeklyGoals.toArray(),
-      personalRecords: await db.personalRecords.toArray(),
-      bodyMeasurements: await db.bodyMeasurements.toArray(),
-      customCards: await db.customCards.toArray(),
-      settings: await db.settings.toArray(),
-      exportedAt: new Date().toISOString(),
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `gym-tracker-backup-${new Date().toISOString().split('T')[0]}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    const data = await exportBackup()
+    downloadBackup(data)
+    toast('Backup exported')
   }
 
   const handleImport = async () => {
@@ -56,20 +40,17 @@ export function SettingsPage() {
     try {
       const text = await file.text()
       const data = JSON.parse(text)
-      if (data.workouts) await db.workouts.bulkAdd(data.workouts)
-      if (data.workoutExercises) await db.workoutExercises.bulkAdd(data.workoutExercises)
-      if (data.workoutSets) await db.workoutSets.bulkAdd(data.workoutSets)
-      if (data.goals) await db.goals.bulkAdd(data.goals)
-      if (data.personalRecords) await db.personalRecords.bulkAdd(data.personalRecords)
-      if (data.bodyMeasurements) await db.bodyMeasurements.bulkAdd(data.bodyMeasurements)
-      if (data.customCards) await db.customCards.bulkAdd(data.customCards)
-      setMessage('Data imported successfully!')
-      setTimeout(() => setMessage(''), 3000)
-    } catch {
-      setMessage('Invalid file')
-      setTimeout(() => setMessage(''), 3000)
+      if (!confirm('Importing a backup will replace ALL current data. Continue?')) {
+        return
+      }
+      await importBackup(data)
+      toast('Data imported successfully')
+    } catch (err) {
+      console.error('Import failed', err)
+      toast('Import failed: invalid backup file', 'error')
+    } finally {
+      e.target.value = ''
     }
-    e.target.value = ''
   }
 
   const handleReset = async () => {
@@ -78,11 +59,11 @@ export function SettingsPage() {
       await db.workoutExercises.clear()
       await db.workoutSets.clear()
       await db.goals.clear()
+      await db.weeklyGoals.clear()
       await db.personalRecords.clear()
       await db.bodyMeasurements.clear()
       await db.customCards.clear()
-      setMessage('All data reset')
-      setTimeout(() => setMessage(''), 3000)
+      toast('All data reset')
     }
   }
 
@@ -98,12 +79,6 @@ export function SettingsPage() {
         <h1 className="text-xl sm:text-2xl font-bold">Settings</h1>
         <p className="text-xs sm:text-sm text-muted-foreground">Customize your experience</p>
       </div>
-
-      {message && (
-        <div className="mb-4 px-4 py-2 rounded-xl bg-success/10 text-success text-sm text-center">
-          {message}
-        </div>
-      )}
 
       <div className="space-y-4">
         <Card>

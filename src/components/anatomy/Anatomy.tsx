@@ -24,6 +24,7 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<BodyChart | null>(null)
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const onMuscleClickRef = useRef(onMuscleClick)
   const [hoveredLibId, setHoveredLibId] = useState<string | null>(null)
   const [tooltipMuscleId, setTooltipMuscleId] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 200, y: 200 })
@@ -55,6 +56,10 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
   }, [muscleStats])
 
   useEffect(() => {
+    onMuscleClickRef.current = onMuscleClick
+  }, [onMuscleClick])
+
+  useEffect(() => {
     if (!containerRef.current) return
 
     const chart = new BodyChart(containerRef.current, {
@@ -75,7 +80,7 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
         const seedId = LIB_TO_SEED[id]
         if (!seedId) return
         clearTimeout(clickTimeoutRef.current)
-        clickTimeoutRef.current = setTimeout(() => onMuscleClick(seedId), 150)
+        clickTimeoutRef.current = setTimeout(() => onMuscleClickRef.current(seedId), 150)
       },
     })
 
@@ -84,6 +89,8 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
       chart.destroy()
       chartRef.current = null
     }
+    // view and bodyState are initial config only; updates flow through the effects below
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {

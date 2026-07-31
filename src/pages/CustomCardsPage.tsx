@@ -35,8 +35,8 @@ export function CustomCardsPage() {
       icon: form.icon,
       accentColor: form.accentColor,
       muscleGroupIds: form.muscleGroupIds,
-      pinned: 0,
-      collapsed: 0,
+      pinned: false,
+      collapsed: false,
       order: cards?.length ?? 0,
     }
     await db.customCards.add(card)
@@ -49,7 +49,7 @@ export function CustomCardsPage() {
   }
 
   const handleTogglePin = async (card: CustomCardType) => {
-    await db.customCards.update(card.id, { pinned: card.pinned ? 0 : 1 })
+    await db.customCards.update(card.id, { pinned: !card.pinned })
   }
 
   const toggleMuscle = (id: string) => {
@@ -157,7 +157,7 @@ export function CustomCardsPage() {
                 className="h-8 w-8 bg-card/80 backdrop-blur"
                 onClick={() => handleTogglePin(card)}
               >
-                <Pin size={14} className={card.pinned === 1 ? 'text-primary' : ''} />
+                <Pin size={14} className={card.pinned ? 'text-primary' : ''} />
               </Button>
               <Button
                 variant="ghost"

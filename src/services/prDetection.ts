@@ -1,5 +1,6 @@
 import { db } from '@/db/schema'
 import { generateId } from '@/lib/utils'
+import type { PersonalRecord } from '@/types'
 
 export async function detectPersonalRecords(workoutId: string) {
   const wes = await db.workoutExercises.where('workoutId').equals(workoutId).toArray()
@@ -12,46 +13,37 @@ export async function detectPersonalRecords(workoutId: string) {
     const maxReps = Math.max(...sets.map(s => s.reps))
     const maxVolume = Math.max(...sets.map(s => s.weight * s.reps))
 
-    const existingWeight = await db.personalRecords
-      .where({ exerciseId, type: 'weight' })
-      .toArray()
-    if (!existingWeight.length || maxWeight > Math.max(...existingWeight.map(pr => pr.value))) {
-      await db.personalRecords.add({
-        id: generateId(),
-        exerciseId,
-        value: maxWeight,
-        type: 'weight',
-        achievedAt: new Date().toISOString(),
-        workoutId,
-      })
-    }
-
-    const existingReps = await db.personalRecords
-      .where({ exerciseId, type: 'reps' })
-      .toArray()
-    if (!existingReps.length || maxReps > Math.max(...existingReps.map(pr => pr.value))) {
-      await db.personalRecords.add({
-        id: generateId(),
-        exerciseId,
-        value: maxReps,
-        type: 'reps',
-        achievedAt: new Date().toISOString(),
-        workoutId,
-      })
-    }
-
-    const existingVolume = await db.personalRecords
-      .where({ exerciseId, type: 'volume' })
-      .toArray()
-    if (!existingVolume.length || maxVolume > Math.max(...existingVolume.map(pr => pr.value))) {
-      await db.personalRecords.add({
-        id: generateId(),
-        exerciseId,
-        value: maxVolume,
-        type: 'volume',
-        achievedAt: new Date().toISOString(),
-        workoutId,
-      })
-    }
+    await upsertRecord(exerciseId, 'weight', maxWeight, workoutId)
+    await upsertRecord(exerciseId, 'reps', maxReps, workoutId)
+    await upsertRecord(exerciseId, 'volume', maxVolume, workoutId)
   }
+}
+
+async function upsertRecord(
+  exerciseId: string,
+  type: PersonalRecord['type'],
+  value: number,
+  workoutId: string,
+) {
+  const existing = await db.personalRecords
+    .where({ exerciseId, type })
+    .first()
+  if (existing) {
+    if (value > existing.value) {
+      await db.personalRecords.update(existing.id, {
+        value,
+        achievedAt: new Date().toISOString(),
+        workoutId,
+      })
+    }
+    return
+  }
+  await db.personalRecords.add({
+    id: generateId(),
+    exerciseId,
+    value,
+    type,
+    achievedAt: new Date().toISOString(),
+    workoutId,
+  })
 }

@@ -9,10 +9,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ArrowLeft, Plus, Trash2, Play, Save, X, Check } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { useUnit } from '@/hooks/useUnit'
+import { unitToKg, formatWeight } from '@/lib/units'
 
 export function WorkoutPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const unit = useUnit()
   const {
     currentWorkout,
     currentExercises,
@@ -42,7 +45,7 @@ export function WorkoutPage() {
 
   useEffect(() => {
     if (id) loadWorkout(id)
-  }, [id])
+  }, [id, loadWorkout])
 
   const handleStartWorkout = async () => {
     const wid = await startWorkout(workoutName || undefined)
@@ -61,7 +64,7 @@ export function WorkoutPage() {
     const w = parseFloat(weight[exerciseId] || '0')
     const r = parseInt(reps[exerciseId] || '0')
     if (w <= 0 || r <= 0) return
-    await addSet(exerciseId, w, r)
+    await addSet(exerciseId, unitToKg(w, unit), r)
     setWeight(prev => ({ ...prev, [exerciseId]: '' }))
     setReps(prev => ({ ...prev, [exerciseId]: '' }))
   }
@@ -72,7 +75,7 @@ export function WorkoutPage() {
   }
 
   const handleDelete = async () => {
-    if (currentWorkout) {
+    if (currentWorkout && confirm(`Delete "${currentWorkout.name}"? This cannot be undone.`)) {
       await deleteWorkout(currentWorkout.id)
       navigate('/')
     }
@@ -151,7 +154,7 @@ export function WorkoutPage() {
                   <div className="space-y-1 mb-3">
                     <div className="hidden sm:flex items-center text-xs text-muted-foreground px-2 py-1">
                       <span className="w-8">Set</span>
-                      <span className="flex-1 text-right">Weight</span>
+                      <span className="flex-1 text-right">Weight ({unit})</span>
                       <span className="w-16 text-right">Reps</span>
                       <span className="w-16 text-right">Volume</span>
                       <span className="w-8" />
@@ -159,10 +162,10 @@ export function WorkoutPage() {
                     {exercise.sets.map((set, i) => (
                       <div key={set.id} className="flex items-center px-2 py-1.5 rounded-lg bg-muted/30 gap-1">
                         <span className="w-6 sm:w-8 text-xs sm:text-sm text-muted-foreground shrink-0">{i + 1}</span>
-                        <span className="flex-1 text-right text-xs sm:text-sm font-medium">{set.weight}</span>
+                        <span className="flex-1 text-right text-xs sm:text-sm font-medium">{formatWeight(set.weight, unit)}</span>
                         <span className="text-xs text-muted-foreground mx-1">x</span>
                         <span className="w-10 sm:w-16 text-right text-xs sm:text-sm font-medium">{set.reps}</span>
-                        <span className="hidden sm:block w-16 text-right text-xs text-muted-foreground">{set.weight * set.reps}</span>
+                        <span className="hidden sm:block w-16 text-right text-xs text-muted-foreground">{formatWeight(set.weight * set.reps, unit)}</span>
                         <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-6 sm:w-6 shrink-0" onClick={() => removeSet(set.id)}>
                           <X size={12} />
                         </Button>
@@ -174,7 +177,7 @@ export function WorkoutPage() {
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <Input
                     type="number"
-                    placeholder="Wt"
+                    placeholder={`Wt (${unit})`}
                     value={weight[exercise.id] ?? ''}
                     onChange={e => setWeight(prev => ({ ...prev, [exercise.id]: e.target.value }))}
                     className="h-9 text-xs sm:text-sm w-16 sm:w-20"

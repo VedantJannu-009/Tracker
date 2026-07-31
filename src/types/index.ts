@@ -79,8 +79,8 @@ export interface CustomCard {
   icon: string
   accentColor: string
   muscleGroupIds: string[]
-  pinned: number
-  collapsed: number
+  pinned: boolean
+  collapsed: boolean
   order: number
 }
 

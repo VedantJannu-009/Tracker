@@ -43,6 +43,19 @@ export class GymDB extends Dexie {
     this.version(2).stores({
       weeklyGoals: 'id, muscleGroupId',
     })
+    this.version(3).stores({
+      exercises: 'id, name, muscleGroupId, equipment, difficulty',
+      workouts: 'id, name, date, createdAt',
+      workoutExercises: 'id, workoutId, exerciseId, order',
+      workoutSets: 'id, workoutExerciseId, weight, reps, order',
+      muscleGroups: 'id, name',
+      goals: 'id, title, exerciseId, muscleGroupId, completed, createdAt',
+      personalRecords: 'id, exerciseId, type, achievedAt, workoutId, [exerciseId+type]',
+      bodyMeasurements: 'id, date',
+      settings: 'id',
+      customCards: 'id, title, pinned, order',
+      weeklyGoals: 'id, muscleGroupId',
+    })
   }
 }
 

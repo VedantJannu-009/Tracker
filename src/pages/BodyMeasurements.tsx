@@ -10,9 +10,12 @@ import { ArrowLeft, Plus, X } from 'lucide-react'
 import { formatDate, generateId } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import type { BodyMeasurement } from '@/types'
+import { useUnit } from '@/hooks/useUnit'
+import { kgToUnit, unitToKg } from '@/lib/units'
 
 export function BodyMeasurementsPage() {
   const navigate = useNavigate()
+  const unit = useUnit()
   const measurements = useLiveQuery(
     () => db.bodyMeasurements.orderBy('date').toArray()
   )
@@ -26,7 +29,7 @@ export function BodyMeasurementsPage() {
     const entry: BodyMeasurement = {
       id: generateId(),
       date: new Date().toISOString(),
-      weight: form.weight ? parseFloat(form.weight) : undefined,
+      weight: form.weight ? unitToKg(parseFloat(form.weight), unit) : undefined,
       bodyFat: form.bodyFat ? parseFloat(form.bodyFat) : undefined,
       chest: form.chest ? parseFloat(form.chest) : undefined,
       waist: form.waist ? parseFloat(form.waist) : undefined,
@@ -40,7 +43,7 @@ export function BodyMeasurementsPage() {
   }
 
   const fields = [
-    { key: 'weight', label: 'Weight (kg)', icon: '⚖️' },
+    { key: 'weight', label: `Weight (${unit})`, icon: '⚖️' },
     { key: 'bodyFat', label: 'Body Fat (%)', icon: '📊' },
     { key: 'chest', label: 'Chest (cm)', icon: '📏' },
     { key: 'waist', label: 'Waist (cm)', icon: '📏' },
@@ -54,7 +57,10 @@ export function BodyMeasurementsPage() {
   const chartData = (key: FieldKey) =>
     (measurements ?? [])
       .filter(m => m[key as keyof BodyMeasurement] != null)
-      .map(m => ({ label: formatDate(m.date), value: m[key as keyof BodyMeasurement] as number }))
+      .map(m => {
+        const value = m[key as keyof BodyMeasurement] as number
+        return { label: formatDate(m.date), value: key === 'weight' ? kgToUnit(value, unit) : value }
+      })
 
   return (
     <PageContainer>

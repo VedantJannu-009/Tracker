@@ -1,37 +1,51 @@
+import { lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { BottomNav } from '@/components/layout/BottomNav'
-import { Home } from '@/pages/Home'
-import { MusclePage } from '@/pages/MusclePage'
-import { ExercisePage } from '@/pages/ExercisePage'
-import { WorkoutPage } from '@/pages/WorkoutPage'
-import { BodyMapPage } from '@/pages/BodyMap'
-import { BodyMeasurementsPage } from '@/pages/BodyMeasurements'
-import { GoalsPage } from '@/pages/Goals'
-import { PersonalRecordsPage } from '@/pages/PersonalRecords'
-import { SearchPage } from '@/pages/Search'
-import { SettingsPage } from '@/pages/Settings'
-import { CustomCardsPage } from '@/pages/CustomCardsPage'
-import { WeeklyGoalsPage } from '@/pages/WeeklyGoals'
+import { Toaster } from '@/components/ui/toast'
+
+const Home = lazy(() => import('@/pages/Home').then(m => ({ default: m.Home })))
+const MusclePage = lazy(() => import('@/pages/MusclePage').then(m => ({ default: m.MusclePage })))
+const ExercisePage = lazy(() => import('@/pages/ExercisePage').then(m => ({ default: m.ExercisePage })))
+const WorkoutPage = lazy(() => import('@/pages/WorkoutPage').then(m => ({ default: m.WorkoutPage })))
+const BodyMapPage = lazy(() => import('@/pages/BodyMap').then(m => ({ default: m.BodyMapPage })))
+const BodyMeasurementsPage = lazy(() => import('@/pages/BodyMeasurements').then(m => ({ default: m.BodyMeasurementsPage })))
+const GoalsPage = lazy(() => import('@/pages/Goals').then(m => ({ default: m.GoalsPage })))
+const PersonalRecordsPage = lazy(() => import('@/pages/PersonalRecords').then(m => ({ default: m.PersonalRecordsPage })))
+const SearchPage = lazy(() => import('@/pages/Search').then(m => ({ default: m.SearchPage })))
+const SettingsPage = lazy(() => import('@/pages/Settings').then(m => ({ default: m.SettingsPage })))
+const CustomCardsPage = lazy(() => import('@/pages/CustomCardsPage').then(m => ({ default: m.CustomCardsPage })))
+const WeeklyGoalsPage = lazy(() => import('@/pages/WeeklyGoals').then(m => ({ default: m.WeeklyGoalsPage })))
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center text-muted-foreground">
+      Loading…
+    </div>
+  )
+}
 
 export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground antialiased">
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/muscles/:id/*" element={<MusclePage />} />
-        <Route path="/exercise/:id/*" element={<ExercisePage />} />
-        <Route path="/workout" element={<WorkoutPage />} />
-        <Route path="/workout/:id" element={<WorkoutPage />} />
-        <Route path="/body" element={<BodyMapPage />} />
-        <Route path="/measurements" element={<BodyMeasurementsPage />} />
-        <Route path="/goals" element={<GoalsPage />} />
-        <Route path="/weekly-goals" element={<WeeklyGoalsPage />} />
-        <Route path="/records" element={<PersonalRecordsPage />} />
-        <Route path="/search" element={<SearchPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/custom-cards" element={<CustomCardsPage />} />
-      </Routes>
+      <Suspense fallback={<PageLoader />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/muscles/:id/*" element={<MusclePage />} />
+          <Route path="/exercise/:id/*" element={<ExercisePage />} />
+          <Route path="/workout" element={<WorkoutPage />} />
+          <Route path="/workout/:id" element={<WorkoutPage />} />
+          <Route path="/body" element={<BodyMapPage />} />
+          <Route path="/measurements" element={<BodyMeasurementsPage />} />
+          <Route path="/goals" element={<GoalsPage />} />
+          <Route path="/weekly-goals" element={<WeeklyGoalsPage />} />
+          <Route path="/records" element={<PersonalRecordsPage />} />
+          <Route path="/search" element={<SearchPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/custom-cards" element={<CustomCardsPage />} />
+        </Routes>
+      </Suspense>
       <BottomNav />
+      <Toaster />
     </div>
   )
 }

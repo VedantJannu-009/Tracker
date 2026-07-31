@@ -1,6 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
-import { useMuscleStats } from '@/hooks/useMuscleStats'
+import { useCustomCardStats } from '@/hooks/useCustomCardStats'
 import { Sparkline } from '@/components/charts/Sparkline'
 import { formatRelative } from '@/lib/utils'
 import { motion } from 'framer-motion'
@@ -18,18 +18,7 @@ export function CustomCard({ card }: CustomCardProps) {
     [card.muscleGroupIds]
   )
 
-  const allStats = card.muscleGroupIds.map(id => useMuscleStats(id))
-  const totalSets = allStats.reduce((sum, s) => sum + s.totalSets, 0)
-  const totalReps = allStats.reduce((sum, s) => sum + s.totalReps, 0)
-  const lastDate = allStats
-    .map(s => s.lastWorkoutDate)
-    .filter(Boolean)
-    .sort()
-    .reverse()[0]
-  const combinedSparkline = allStats.reduce<number[]>((longest, s) =>
-    s.sparkline.length > longest.length ? s.sparkline : longest,
-    []
-  )
+  const { totalSets, totalReps, lastDate, sparkline } = useCustomCardStats(card.muscleGroupIds)
 
   return (
     <motion.div
@@ -49,8 +38,8 @@ export function CustomCard({ card }: CustomCardProps) {
           <div className="whitespace-nowrap">{totalReps}r</div>
         </div>
       </div>
-      {combinedSparkline.length > 0 && (
-        <Sparkline data={combinedSparkline} color={card.accentColor} height={32} />
+      {sparkline.length > 0 && (
+        <Sparkline data={sparkline} color={card.accentColor} height={32} />
       )}
       <div className="text-[11px] text-muted-foreground mt-1">
         {lastDate ? `Last ${formatRelative(lastDate)}` : 'No data'}

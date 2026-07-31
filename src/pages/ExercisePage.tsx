@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input'
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { ArrowLeft, Dumbbell, TrendingUp, Clock, MoreVertical, Pencil, Copy, Trash2, Layers, Activity, Gauge, ChevronDown, ChevronRight } from 'lucide-react'
 import { formatRelative, formatDate } from '@/lib/utils'
+import { useUnit } from '@/hooks/useUnit'
+import { formatWeight } from '@/lib/units'
 
 const PIE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b']
 
@@ -18,6 +20,8 @@ export function ExercisePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const stats = useExerciseStats(id ?? '')
+  const unit = useUnit()
+  const { totalSets, totalReps, sets, workoutExercises, workouts } = stats
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showRename, setShowRename] = useState(false)
@@ -62,36 +66,36 @@ export function ExercisePage() {
   }
 
   const pieData = useMemo(() => {
-    if (stats.totalSets === 0) return []
-    const totalVolume = stats.sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
+    if (totalSets === 0) return []
+    const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
     const values = [
-      { label: 'Sets', value: stats.totalSets, icon: Layers },
-      { label: 'Reps', value: stats.totalReps, icon: Activity },
+      { label: 'Sets', value: totalSets, icon: Layers },
+      { label: 'Reps', value: totalReps, icon: Activity },
       { label: 'Volume', value: totalVolume, icon: Gauge },
     ]
     const total = values.reduce((s, v) => s + v.value, 0)
     if (total === 0) return []
     return values.map(v => ({ ...v, pct: Math.round((v.value / total) * 100) }))
-  }, [stats.totalSets, stats.totalReps, stats.sets])
+  }, [totalSets, totalReps, sets])
 
   const workoutsWithSets = useMemo(() => {
-    if (!stats.workoutExercises || !stats.sets) return []
+    if (!workoutExercises || !sets) return []
 
     // Build workoutId → sets map via workoutExerciseId
     const weWorkoutMap = new Map<string, string>()
-    for (const we of stats.workoutExercises) {
+    for (const we of workoutExercises) {
       weWorkoutMap.set(we.id, we.workoutId)
     }
 
-    const sessionMap = new Map<string, typeof stats.sets>()
-    for (const s of stats.sets) {
+    const sessionMap = new Map<string, typeof sets>()
+    for (const s of sets) {
       const wid = weWorkoutMap.get(s.workoutExerciseId)
       if (!wid) continue
       if (!sessionMap.has(wid)) sessionMap.set(wid, [])
       sessionMap.get(wid)!.push(s)
     }
 
-    const workoutMap = new Map((stats.workouts ?? []).map(w => [w.id, w]))
+    const workoutMap = new Map((workouts ?? []).map(w => [w.id, w]))
 
     return [...sessionMap.entries()]
       .map(([wid, sets]) => {
@@ -106,7 +110,7 @@ export function ExercisePage() {
       })
       .filter((w): w is NonNullable<typeof w> => w !== null && w.sets.length > 0)
       .sort((a, b) => b.date.localeCompare(a.date))
-  }, [stats.workouts, stats.workoutExercises, stats.sets])
+  }, [workouts, workoutExercises, sets])
 
   if (!stats.exercise) return null
 
@@ -149,7 +153,7 @@ export function ExercisePage() {
             <TrendingUp size={14} />
             <span className="text-xs">Best Weight</span>
           </div>
-          <div className="text-lg sm:text-xl font-bold">{stats.maxWeight} kg</div>
+          <div className="text-lg sm:text-xl font-bold">{formatWeight(stats.maxWeight, unit)}</div>
         </Card>
         <Card className="p-3 sm:p-3.5">
           <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -229,7 +233,7 @@ export function ExercisePage() {
                     <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mb-1 flex-wrap">
                       <span>{totalSets} {totalSets === 1 ? 'set' : 'sets'}</span>
                       <span>{totalReps} {totalReps === 1 ? 'rep' : 'reps'}</span>
-                      {bestWeight > 0 && <span>Best {bestWeight} kg</span>}
+                      {bestWeight > 0 && <span>Best {formatWeight(bestWeight, unit)}</span>}
                     </div>
                     {isExpanded && (
                       <>
@@ -238,7 +242,7 @@ export function ExercisePage() {
                             <div key={set.id} className="flex items-center gap-3 text-sm pl-3">
                               <span className="text-[11px] text-muted-foreground w-10 shrink-0">Set {si + 1}</span>
                               <span className="font-medium">
-                                {set.weight > 0 ? `${set.weight} kg` : 'Bodyweight'} &times; {set.reps}
+                                {set.weight > 0 ? `${formatWeight(set.weight, unit)}` : 'Bodyweight'} &times; {set.reps}
                               </span>
                             </div>
                           ))}
