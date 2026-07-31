@@ -7,10 +7,12 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ArrowLeft, Plus, Trash2, Play, Save, X, Check } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { ExerciseCard } from '@/components/workout/ExerciseCard'
+import { ArrowLeft, Plus, Trash2, Play, Save, X } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useUnit } from '@/hooks/useUnit'
-import { unitToKg, formatWeight } from '@/lib/units'
+import { unitToKg } from '@/lib/units'
 
 export function WorkoutPage() {
   const { id } = useParams<{ id: string }>()
@@ -35,6 +37,9 @@ export function WorkoutPage() {
   const [selectedMuscle, setSelectedMuscle] = useState<string>('')
   const [selectedExercise, setSelectedExercise] = useState<string>('')
   const [showAddExercise, setShowAddExercise] = useState(false)
+  const [openCardId, setOpenCardId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const muscleGroups = useLiveQuery(() => db.muscleGroups.toArray())
   const exercises = useLiveQuery(
@@ -42,6 +47,13 @@ export function WorkoutPage() {
     [selectedMuscle]
   )
   const allExercises = useLiveQuery(() => db.exercises.toArray())
+
+  const deleteTargetExercise = currentExercises.find(e => e.id === deleteTarget)
+  const deleteTargetName = (() => {
+    if (!deleteTargetExercise) return ''
+    const ex = allExercises?.find(e => e.id === deleteTargetExercise.exerciseId)
+    return ex?.name ?? deleteTargetExercise.exerciseId
+  })()
 
   useEffect(() => {
     if (id) loadWorkout(id)
@@ -79,6 +91,18 @@ export function WorkoutPage() {
       await deleteWorkout(currentWorkout.id)
       navigate('/')
     }
+  }
+
+  const handleOpenChange = (id: string, open: boolean) => {
+    setOpenCardId(open ? id : prev => (prev === id ? null : prev))
+  }
+
+  const handleDeleteExercise = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    await removeExercise(deleteTarget)
+    setDeleteTarget(null)
+    setDeleting(false)
   }
 
   if (!currentWorkout) {
@@ -141,66 +165,22 @@ export function WorkoutPage() {
         {currentExercises.map(exercise => {
           const ex = allExercises?.find(e => e.id === exercise.exerciseId)
           return (
-            <Card key={exercise.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-semibold text-sm">{ex?.name ?? exercise.exerciseId}</h3>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeExercise(exercise.id)}>
-                    <X size={14} />
-                  </Button>
-                </div>
-
-                {exercise.sets.length > 0 && (
-                  <div className="space-y-1 mb-3">
-                    <div className="hidden sm:flex items-center text-xs text-muted-foreground px-2 py-1">
-                      <span className="w-8">Set</span>
-                      <span className="flex-1 text-right">Weight ({unit})</span>
-                      <span className="w-16 text-right">Reps</span>
-                      <span className="w-16 text-right">Volume</span>
-                      <span className="w-8" />
-                    </div>
-                    {exercise.sets.map((set, i) => (
-                      <div key={set.id} className="flex items-center px-2 py-1.5 rounded-lg bg-muted/30 gap-1">
-                        <span className="w-6 sm:w-8 text-xs sm:text-sm text-muted-foreground shrink-0">{i + 1}</span>
-                        <span className="flex-1 text-right text-xs sm:text-sm font-medium">{formatWeight(set.weight, unit)}</span>
-                        <span className="text-xs text-muted-foreground mx-1">x</span>
-                        <span className="w-10 sm:w-16 text-right text-xs sm:text-sm font-medium">{set.reps}</span>
-                        <span className="hidden sm:block w-16 text-right text-xs text-muted-foreground">{formatWeight(set.weight * set.reps, unit)}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-6 sm:w-6 shrink-0" onClick={() => removeSet(set.id)}>
-                          <X size={12} />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Input
-                    type="number"
-                    placeholder={`Wt (${unit})`}
-                    value={weight[exercise.id] ?? ''}
-                    onChange={e => setWeight(prev => ({ ...prev, [exercise.id]: e.target.value }))}
-                    className="h-9 text-xs sm:text-sm w-16 sm:w-20"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Reps"
-                    value={reps[exercise.id] ?? ''}
-                    onChange={e => setReps(prev => ({ ...prev, [exercise.id]: e.target.value }))}
-                    className="h-9 text-xs sm:text-sm w-14 sm:w-20"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => handleAddSet(exercise.id)}
-                    disabled={!weight[exercise.id] || !reps[exercise.id]}
-                    className="h-9 text-xs sm:text-sm whitespace-nowrap"
-                  >
-                    <Check size={14} className="mr-1" /> Set
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+            <ExerciseCard
+              key={exercise.id}
+              name={ex?.name ?? exercise.exerciseId}
+              sets={exercise.sets}
+              unit={unit}
+              weight={weight[exercise.id] ?? ''}
+              reps={reps[exercise.id] ?? ''}
+              isOpen={openCardId === exercise.id}
+              onOpenChange={open => handleOpenChange(exercise.id, open)}
+              onWeightChange={v => setWeight(prev => ({ ...prev, [exercise.id]: v }))}
+              onRepsChange={v => setReps(prev => ({ ...prev, [exercise.id]: v }))}
+              onAddSet={() => handleAddSet(exercise.id)}
+              onRemoveSet={setId => removeSet(setId)}
+              onDelete={() => setDeleteTarget(exercise.id)}
+              onEdit={() => navigate(`/exercise/${exercise.exerciseId}`)}
+            />
           )
         })}
       </div>
@@ -249,6 +229,23 @@ export function WorkoutPage() {
         >
           <Plus size={16} className="mr-1" /> Add Exercise
         </Button>
+      )}
+
+      {deleteTarget && deleteTargetExercise && (
+        <ConfirmDialog
+          open
+          title="Delete Exercise?"
+          description={
+            <>
+              This will permanently remove <strong>{deleteTargetName}</strong> and all
+              of its logged sets from this workout.
+            </>
+          }
+          confirmLabel="Delete"
+          busy={deleting}
+          onConfirm={handleDeleteExercise}
+          onCancel={() => setDeleteTarget(null)}
+        />
       )}
     </PageContainer>
   )
