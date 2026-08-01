@@ -32,7 +32,7 @@ describe('backup', () => {
     await db.goals.add({ id: 'g1', title: 'Squat 200', targetValue: 200, currentValue: 180, unit: 'kg', createdAt: 1, completed: false })
     await db.weeklyGoals.add({ id: 'wg1', muscleGroupId: 'legs', targetSets: 12 })
     await db.settings.put({ id: 'default', theme: 'dark', unit: 'kg', soundEnabled: true, restTimer: 90 })
-    await db.muscleGroups.add({ id: 'legs', name: 'Legs', icon: '🦵' })
+    await db.muscleGroups.add({ id: 'legs', name: 'Legs' })
     await db.exercises.add({ id: 'squat', name: 'Squat', muscleGroupId: 'legs', equipment: 'Barbell', difficulty: 'intermediate' })
 
     const backup = await exportBackup()

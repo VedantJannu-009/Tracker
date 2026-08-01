@@ -1,7 +1,6 @@
 export interface MuscleGroup {
   id: string
   name: string
-  icon: string
 }
 
 export interface Exercise {
@@ -98,4 +97,15 @@ export interface WeeklyGoal {
   id: string
   muscleGroupId: string
   targetSets: number
+}
+
+export type RecoveryStatus = 'ready' | 'recovering' | 'inactive'
+
+export interface RecoverySnapshot {
+  id: string
+  status: RecoveryStatus
+  lastWorkoutAt: number | null
+  readyAt: number | null
+  estimatedHours: number
+  computedAt: number
 }

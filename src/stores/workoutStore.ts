@@ -3,6 +3,7 @@ import { db } from '@/db/schema'
 import type { Workout, WorkoutExercise, WorkoutSet } from '@/types'
 import { generateId } from '@/lib/utils'
 import { detectPersonalRecords } from '@/services/prDetection'
+import { refreshRecovery } from '@/services/recoveryEngine'
 import { toast } from '@/stores/toastStore'
 
 interface WorkoutState {
@@ -148,6 +149,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       const duration = Math.max(1, Math.round((Date.now() - currentWorkout.createdAt) / 60000))
       await db.workouts.update(currentWorkout.id, { duration })
       await detectPersonalRecords(currentWorkout.id)
+      await refreshRecovery()
       toast('Workout saved')
     } catch (err) {
       console.error('Failed to save workout', err)
@@ -164,6 +166,7 @@ export const useWorkoutStore = create<WorkoutState>((set, get) => ({
       await db.workoutSets.where('workoutExerciseId').anyOf(wes.map(w => w.id)).delete()
       await db.workoutExercises.where('workoutId').equals(id).delete()
       await db.workouts.delete(id)
+      await refreshRecovery()
       toast('Workout deleted')
     } catch (err) {
       console.error('Failed to delete workout', err)

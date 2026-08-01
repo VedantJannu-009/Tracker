@@ -4,14 +4,23 @@ import type { BodyState } from 'body-muscles'
 import { AnimatePresence } from 'framer-motion'
 import { Tooltip } from './Tooltip'
 import { useAllMuscleStats } from '@/hooks/useAllMuscleStats'
+import type { RecoveryView } from '@/hooks/useRecovery'
 import { SEED_TO_LIB, LIB_TO_SEED } from '@/lib/muscleMappings'
 
 interface AnatomyProps {
   onMuscleClick: (muscleId: string) => void
   view: 'front' | 'back'
+  colorMode?: 'activity' | 'recovery'
+  recoveryMap?: Map<string, RecoveryView> | null
 }
 
 const INTENSITY = { INACTIVE: 0, TRAINED: 3, RECENT: 6, FREQUENT: 9 }
+
+const RECOVERY_COLORS: Record<RecoveryView['status'], string> = {
+  recovering: '#f59e0b',
+  ready: '#22c55e',
+  inactive: '#6b7280',
+}
 
 function seedColor(stats: { hasData: boolean; isRecentlyTrained: boolean; isFrequentlyTrained: boolean } | undefined): string {
   if (!stats?.hasData) return '#6b7280'
@@ -20,7 +29,7 @@ function seedColor(stats: { hasData: boolean; isRecentlyTrained: boolean; isFreq
   return '#6b7280'
 }
 
-export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
+export function Anatomy({ onMuscleClick, view, colorMode = 'activity', recoveryMap }: AnatomyProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<BodyChart | null>(null)
   const clickTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -28,32 +37,55 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
   const [hoveredLibId, setHoveredLibId] = useState<string | null>(null)
   const [tooltipMuscleId, setTooltipMuscleId] = useState<string | null>(null)
   const [tooltipPos, setTooltipPos] = useState({ x: 200, y: 200 })
-  const muscleStats = useAllMuscleStats()
+  const muscleStats = useAllMuscleStats(colorMode !== 'recovery')
 
-  const colorMap = useMemo(() => {
+  const { colorMap, glowIds } = useMemo(() => {
     const map = new Map<string, string>()
-    for (const [seedId, stats] of muscleStats) {
-      const color = seedColor(stats)
-      for (const libId of SEED_TO_LIB[seedId] || []) {
-        map.set(libId, color)
+    const glow = new Set<string>()
+    if (colorMode === 'recovery' && recoveryMap) {
+      for (const [seedId, rec] of recoveryMap) {
+        for (const libId of SEED_TO_LIB[seedId] || []) {
+          map.set(libId, RECOVERY_COLORS[rec.status])
+          if (rec.status === 'recovering') glow.add(libId)
+        }
+      }
+    } else {
+      for (const [seedId, stats] of muscleStats) {
+        const color = seedColor(stats)
+        for (const libId of SEED_TO_LIB[seedId] || []) {
+          map.set(libId, color)
+        }
       }
     }
-    return map
-  }, [muscleStats])
+    return { colorMap: map, glowIds: glow }
+  }, [colorMode, recoveryMap, muscleStats])
 
   const bodyState: BodyState = useMemo(() => {
     const state: BodyState = {}
-    for (const [seedId, stats] of muscleStats) {
-      const intensity = !stats.hasData ? INTENSITY.INACTIVE
-        : stats.isFrequentlyTrained ? INTENSITY.FREQUENT
-        : stats.isRecentlyTrained ? INTENSITY.RECENT
-        : INTENSITY.TRAINED
-      for (const libId of SEED_TO_LIB[seedId] || []) {
-        state[libId] = { intensity, selected: false }
+    if (colorMode === 'recovery' && recoveryMap) {
+      for (const [seedId, rec] of recoveryMap) {
+        const intensity = rec.status === 'recovering'
+          ? INTENSITY.RECENT
+          : rec.status === 'ready'
+            ? INTENSITY.TRAINED
+            : INTENSITY.INACTIVE
+        for (const libId of SEED_TO_LIB[seedId] || []) {
+          state[libId] = { intensity, selected: false }
+        }
+      }
+    } else {
+      for (const [seedId, stats] of muscleStats) {
+        const intensity = !stats.hasData ? INTENSITY.INACTIVE
+          : stats.isFrequentlyTrained ? INTENSITY.FREQUENT
+          : stats.isRecentlyTrained ? INTENSITY.RECENT
+          : INTENSITY.TRAINED
+        for (const libId of SEED_TO_LIB[seedId] || []) {
+          state[libId] = { intensity, selected: false }
+        }
       }
     }
     return state
-  }, [muscleStats])
+  }, [colorMode, recoveryMap, muscleStats])
 
   useEffect(() => {
     onMuscleClickRef.current = onMuscleClick
@@ -108,9 +140,22 @@ export function Anatomy({ onMuscleClick, view }: AnatomyProps) {
     if (!paths) return
     for (const [libId, path] of paths) {
       const base = colorMap.get(libId)
-      path.style.fill = libId === hoveredLibId ? '#60a5fa' : (base ?? '#6b7280')
+      const recovering = glowIds.has(libId)
+      const isHovered = libId === hoveredLibId
+      path.style.fill = isHovered ? '#60a5fa' : (base ?? '#6b7280')
+      if (colorMode === 'recovery') {
+        path.style.filter = isHovered
+          ? 'url(#glow)'
+          : recovering
+            ? 'drop-shadow(0 0 6px rgba(245, 158, 11, 0.45))'
+            : 'none'
+        path.classList.toggle('muscle-recovering', recovering)
+      } else {
+        path.style.filter = 'none'
+        path.classList.remove('muscle-recovering')
+      }
     }
-  }, [colorMap, hoveredLibId])
+  }, [colorMap, glowIds, hoveredLibId, colorMode])
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     setTooltipPos({ x: e.clientX, y: e.clientY })

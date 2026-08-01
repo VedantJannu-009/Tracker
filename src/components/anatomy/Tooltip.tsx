@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { MuscleIcon } from '@/components/muscle/MuscleIcon'
 import { useMuscleStats } from '@/hooks/useMuscleStats'
 import { db } from '@/db/schema'
 import { formatRelative } from '@/lib/utils'
@@ -30,7 +31,10 @@ export function Tooltip({ muscleId, x, y }: TooltipProps) {
       }}
     >
       <div className="px-3.5 py-2.5 rounded-xl bg-card/95 border border-border/60 shadow-2xl backdrop-blur-xl min-w-[160px]">
-        <div className="text-sm font-semibold mb-1.5">{muscle.icon} {muscle.name}</div>
+        <div className="text-sm font-semibold mb-1.5 flex items-center gap-1.5">
+          <MuscleIcon muscleId={muscle.id} size={14} />
+          {muscle.name}
+        </div>
         <div className="space-y-1">
           <div className="flex items-center justify-between text-[11px]">
             <span className="text-muted-foreground">Exercises</span>

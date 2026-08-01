@@ -8,7 +8,10 @@ import { PageContainer } from '@/components/layout/PageContainer'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Search, Dumbbell, Pencil, Copy, Trash2, MoreVertical } from 'lucide-react'
+import { Search, SearchX, Pencil, Copy, Trash2, MoreVertical } from 'lucide-react'
+import { ExerciseIcon } from '@/components/exercise/ExerciseIcon'
+import { MuscleIcon } from '@/components/muscle/MuscleIcon'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function SearchPage() {
   const navigate = useNavigate()
@@ -110,11 +113,12 @@ export function SearchPage() {
           <button
             key={m.id}
             onClick={() => setMuscleFilter(m.id)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+            className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors flex items-center gap-1 ${
               muscleFilter === m.id ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}
           >
-            {m.icon} {m.name}
+            <MuscleIcon muscleId={m.id} size={12} />
+            {m.name}
           </button>
         ))}
       </div>
@@ -138,7 +142,10 @@ export function SearchPage() {
           const mg = muscleGroups?.find(m => m.id === groupId)
           return (
             <div key={groupId}>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">{mg?.icon} {mg?.name}</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground mb-2 flex items-center gap-1.5">
+                {mg && <MuscleIcon muscleId={mg.id} size={14} />}
+                {mg?.name}
+              </h3>
               <div className="space-y-1">
                 {exs.map(ex => (
                 <div
@@ -153,7 +160,7 @@ export function SearchPage() {
                     aria-label={`Open ${ex.name}`}
                     className="flex items-center gap-2 sm:gap-3 flex-1 cursor-pointer min-w-0"
                   >
-                    <Dumbbell size={14} className="text-muted-foreground shrink-0" />
+                    <ExerciseIcon name={ex.name} equipment={ex.equipment} size={14} className="text-muted-foreground shrink-0" />
                     <span className="text-sm font-medium truncate">{ex.name}</span>
                   </div>
                   <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 ml-1 sm:ml-2">
@@ -184,11 +191,7 @@ export function SearchPage() {
         })}
 
         {query && filtered.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">🔍</div>
-            <h3 className="text-lg font-semibold mb-1">No results</h3>
-            <p className="text-sm text-muted-foreground">Try a different search term</p>
-          </div>
+          <EmptyState icon={SearchX} title="No results" description="Try a different search term" />
         )}
       </div>
 

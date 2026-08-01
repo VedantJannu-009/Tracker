@@ -2,13 +2,16 @@ import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
-import { useWeeklyStats } from '@/hooks/useWeeklyStats'
+import type { WeeklyStats } from '@/hooks/useWeeklyStats'
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1']
 
-export function WeeklyMuscleDistributionChart() {
+interface WeeklyMuscleDistributionChartProps {
+  stats: WeeklyStats
+}
+
+export function WeeklyMuscleDistributionChart({ stats }: WeeklyMuscleDistributionChartProps) {
   const navigate = useNavigate()
-  const stats = useWeeklyStats()
 
   const chartData = useMemo(() => {
     if (!stats.loaded || stats.weekWorkouts.length === 0) return []
@@ -26,8 +29,8 @@ export function WeeklyMuscleDistributionChart() {
   if (!chartData.length) return null
 
   return (
-    <div className="mb-6">
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Muscle Distribution</h2>
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Weekly Muscle Distribution</p>
       <Card>
         <CardContent className="p-4">
           <ResponsiveContainer width="100%" height={220}>

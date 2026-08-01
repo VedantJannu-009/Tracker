@@ -157,3 +157,55 @@ html {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+.muscle-recovering {
+  animation: muscle-breathe 2.6s ease-in-out infinite;
+}
+
+@keyframes muscle-breathe {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.78;
+  }
+}
+
+.heatmap-cell {
+  transition: transform 0.12s ease, background-color 0.3s ease;
+}
+.heatmap-cell:hover {
+  transform: scale(1.3);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .muscle-recovering {
+    animation: none;
+  }
+  .heatmap-cell {
+    transition: none;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

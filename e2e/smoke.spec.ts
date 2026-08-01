@@ -10,6 +10,7 @@ const ROUTES = [
   { path: '/goals', label: 'Goals' },
   { path: '/weekly-goals', label: 'WeeklyGoals' },
   { path: '/records', label: 'PersonalRecords' },
+  { path: '/statistics', label: 'Statistics' },
   { path: '/search', label: 'Search' },
   { path: '/settings', label: 'Settings' },
   { path: '/custom-cards', label: 'CustomCards' },

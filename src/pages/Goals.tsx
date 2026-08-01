@@ -11,6 +11,7 @@ import { ArrowLeft, Plus, Trash2, CheckCircle, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { generateId } from '@/lib/utils'
 import type { Goal } from '@/types'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function GoalsPage() {
   const navigate = useNavigate()
@@ -122,14 +123,16 @@ export function GoalsPage() {
         })}
 
         {(!goals || goals.length === 0) && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">🎯</div>
-            <h3 className="text-lg font-semibold mb-1">No goals yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Set your fitness goals and track progress</p>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus size={16} className="mr-1" /> Create Goal
-            </Button>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="No goals yet"
+            description="Set your fitness goals and track progress"
+            action={
+              <Button onClick={() => setShowForm(true)}>
+                <Plus size={16} className="mr-1" /> Create Goal
+              </Button>
+            }
+          />
         )}
       </div>
     </PageContainer>

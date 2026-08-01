@@ -5,30 +5,40 @@ import { deleteExercise, renameExercise, duplicateExercise } from '@/services/ex
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageContainer } from '@/components/layout/PageContainer'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
-import { ArrowLeft, Dumbbell, TrendingUp, Clock, MoreVertical, Pencil, Copy, Trash2, Layers, Activity, Gauge, ChevronDown, ChevronRight, Loader2 } from 'lucide-react'
-import { formatRelative, formatDate } from '@/lib/utils'
+import { CollapsibleSection } from '@/components/exercise/CollapsibleSection'
+import { ProgressChart } from '@/components/exercise/ProgressChart'
+import { PerformanceComparison } from '@/components/exercise/PerformanceComparison'
+import { MonthlyComparison } from '@/components/exercise/MonthlyComparison'
+import { ExerciseSessionCard } from '@/components/exercise/ExerciseSessionCard'
+import { WorkoutTimeline } from '@/components/workout/WorkoutTimeline'
+import { ArrowLeft, Dumbbell, TrendingUp, Clock, MoreVertical, Pencil, Copy, Trash2, LineChart, CalendarRange, History } from 'lucide-react'
+import { formatRelative } from '@/lib/utils'
 import { useUnit } from '@/hooks/useUnit'
 import { formatWeight } from '@/lib/units'
-
-const PIE_COLORS = ['#3b82f6', '#22c55e', '#f59e0b']
+import { buildSessions, computeMonthlyComparison } from '@/lib/exerciseProgress'
+import { buildWorkoutTimeline } from '@/lib/workoutTimeline'
+import { EmptyState } from '@/components/ui/empty-state'
+import { PageLoading } from '@/components/ui/page-loading'
 
 export function ExercisePage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const stats = useExerciseStats(id ?? '')
   const unit = useUnit()
-  const { totalSets, totalReps, sets, workoutExercises, workouts } = stats
+  const { sets, workoutExercises, workouts } = stats
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showRename, setShowRename] = useState(false)
   const [renameValue, setRenameValue] = useState('')
   const [renaming, setRenaming] = useState(false)
   const [expandedWorkouts, setExpandedWorkouts] = useState<Set<string>>(new Set())
+
+  const sessions = useMemo(() => buildSessions(workouts, workoutExercises, sets), [workouts, workoutExercises, sets])
+  const monthly = useMemo(() => computeMonthlyComparison(sessions), [sessions])
 
   const toggleExpanded = (id: string) => {
     setExpandedWorkouts(prev => {
@@ -67,52 +77,15 @@ export function ExercisePage() {
     await duplicateExercise(id)
   }
 
-  const pieData = useMemo(() => {
-    if (totalSets === 0) return []
-    const totalVolume = sets.reduce((sum, s) => sum + s.weight * s.reps, 0)
-    const values = [
-      { label: 'Sets', value: totalSets, icon: Layers },
-      { label: 'Reps', value: totalReps, icon: Activity },
-      { label: 'Volume', value: totalVolume, icon: Gauge },
-    ]
-    const total = values.reduce((s, v) => s + v.value, 0)
-    if (total === 0) return []
-    return values.map(v => ({ ...v, pct: Math.round((v.value / total) * 100) }))
-  }, [totalSets, totalReps, sets])
-
-  const workoutsWithSets = useMemo(() => {
-    if (!workoutExercises || !sets) return []
-
-    // Build workoutId → sets map via workoutExerciseId
-    const weWorkoutMap = new Map<string, string>()
-    for (const we of workoutExercises) {
-      weWorkoutMap.set(we.id, we.workoutId)
-    }
-
-    const sessionMap = new Map<string, typeof sets>()
-    for (const s of sets) {
-      const wid = weWorkoutMap.get(s.workoutExerciseId)
-      if (!wid) continue
-      if (!sessionMap.has(wid)) sessionMap.set(wid, [])
-      sessionMap.get(wid)!.push(s)
-    }
-
-    const workoutMap = new Map((workouts ?? []).map(w => [w.id, w]))
-
-    return [...sessionMap.entries()]
-      .map(([wid, sets]) => {
-        const w = workoutMap.get(wid)
-        if (!w) return null
-        return {
-          id: wid,
-          date: w.date,
-          name: w.name,
-          sets: sets.sort((a, b) => a.order - b.order),
-        }
-      })
-      .filter((w): w is NonNullable<typeof w> => w !== null && w.sets.length > 0)
-      .sort((a, b) => b.date.localeCompare(a.date))
-  }, [workouts, workoutExercises, sets])
+  const exerciseTimeline = useMemo(() => {
+    if (!stats.exercise) return []
+    return buildWorkoutTimeline({
+      workouts: stats.workouts,
+      workoutExercises: stats.workoutExercises,
+      sets: stats.sets,
+      exercises: [stats.exercise],
+    })
+  }, [stats.workouts, stats.workoutExercises, stats.sets, stats.exercise])
 
   if (stats.loading) {
     return (
@@ -122,9 +95,7 @@ export function ExercisePage() {
             <ArrowLeft size={20} />
           </Button>
         </div>
-        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-          <Loader2 size={16} className="mr-2 animate-spin" /> Loading…
-        </div>
+        <PageLoading />
       </PageContainer>
     )
   }
@@ -201,101 +172,55 @@ export function ExercisePage() {
         </Card>
       </div>
 
-      {pieData.length > 0 && (
-        <Card className="mb-6">
-          <CardContent className="p-3 sm:p-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Workload Breakdown</h3>
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
-              <div className="w-full max-w-[180px] sm:w-40 aspect-square shrink-0">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RechartsPieChart>
-                    <Pie data={pieData} dataKey="value" nameKey="label" cx="50%" cy="50%" outerRadius={65} innerRadius={35}>
-                      {pieData.map((_, i) => (
-                        <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ background: 'var(--chart-tooltip-bg, #1a1a1a)', border: '1px solid var(--chart-tooltip-border, #2a2a2a)', borderRadius: 8, fontSize: 12 }}
-                    />
-                  </RechartsPieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="flex sm:flex-col gap-3 sm:gap-2.5 flex-wrap justify-center">
-                {pieData.map((d, i) => (
-                  <div key={d.label} className="flex items-center gap-1.5 sm:gap-2.5">
-                    <d.icon size={16} style={{ color: PIE_COLORS[i] }} />
-                    <span className="text-xs sm:text-sm text-muted-foreground">{d.label}</span>
-                    <span className="text-xs sm:text-sm font-medium text-right">{d.pct}%</span>
-                    <span className="text-xs text-muted-foreground">({d.value.toLocaleString()})</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {sessions.length >= 2 && <PerformanceComparison sessions={sessions} unit={unit} />}
+
+      {sessions.length >= 2 && (
+        <CollapsibleSection
+          title="Progress Chart"
+          icon={<LineChart size={18} className="text-primary" />}
+          summary={`${sessions.length} sessions`}
+        >
+          <ProgressChart sessions={sessions} />
+        </CollapsibleSection>
       )}
 
-      {workoutsWithSets.length > 0 && (
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Workout History</h3>
-          <div className="space-y-2">
-            {workoutsWithSets.map(w => {
-              const totalReps = w.sets.reduce((s, set) => s + set.reps, 0)
-              const totalSets = w.sets.length
-              const bestWeight = w.sets.reduce((best, set) => Math.max(best, set.weight), 0)
-              const isExpanded = expandedWorkouts.has(w.id)
-              return (
-                <Card
-                  key={w.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-expanded={isExpanded}
-                  aria-label={`${formatDate(w.date)} workout details`}
-                  className="cursor-pointer transition-colors hover:bg-muted/20"
-                  onClick={() => toggleExpanded(w.id)}
-                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleExpanded(w.id) } }}
-                >
-                  <CardContent className="p-3 sm:p-4">
-                    <div className="flex items-center justify-between mb-2 gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {isExpanded ? <ChevronDown size={14} className="text-muted-foreground shrink-0" /> : <ChevronRight size={14} className="text-muted-foreground shrink-0" />}
-                        <span className="text-sm font-semibold shrink-0">{formatDate(w.date)}</span>
-                      </div>
-                      <span className="text-xs text-muted-foreground truncate text-right">{w.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 sm:gap-3 text-xs text-muted-foreground mb-1 flex-wrap">
-                      <span>{totalSets} {totalSets === 1 ? 'set' : 'sets'}</span>
-                      <span>{totalReps} {totalReps === 1 ? 'rep' : 'reps'}</span>
-                      {bestWeight > 0 && <span>Best {formatWeight(bestWeight, unit)}</span>}
-                    </div>
-                    {isExpanded && (
-                      <>
-                        <div className="space-y-1.5 mt-3 pt-3 border-t border-border/30">
-                          {w.sets.map((set, si) => (
-                            <div key={set.id} className="flex items-center gap-3 text-sm pl-3">
-                              <span className="text-[11px] text-muted-foreground w-10 shrink-0">Set {si + 1}</span>
-                              <span className="font-medium">
-                                {set.weight > 0 ? `${formatWeight(set.weight, unit)}` : 'Bodyweight'} &times; {set.reps}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
+      {monthly && (
+        <CollapsibleSection
+          title="Monthly Comparison"
+          icon={<CalendarRange size={18} className="text-primary" />}
+          summary={`${monthly.current.workoutCount} workouts in ${monthly.current.label}`}
+        >
+          <MonthlyComparison sessions={sessions} />
+        </CollapsibleSection>
       )}
 
-      {workoutsWithSets.length === 0 && stats.exercise && (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-3">🏋️</div>
-          <h3 className="text-lg font-semibold mb-1">No workouts yet</h3>
-          <p className="text-sm text-muted-foreground">Start logging {stats.exercise.name} to see your progress</p>
-        </div>
+      {exerciseTimeline.length > 0 && (
+        <CollapsibleSection
+          title="Workout History"
+          icon={<History size={18} className="text-primary" />}
+          summary={`${exerciseTimeline.reduce((n, d) => n + d.sessions.length, 0)} workouts`}
+          defaultOpen
+        >
+          <WorkoutTimeline
+            days={exerciseTimeline}
+            renderSession={session => (
+              <ExerciseSessionCard
+                session={session}
+                unit={unit}
+                expanded={expandedWorkouts.has(session.id)}
+                onToggle={() => toggleExpanded(session.id)}
+              />
+            )}
+          />
+        </CollapsibleSection>
+      )}
+
+      {exerciseTimeline.length === 0 && stats.exercise && (
+        <EmptyState
+          icon={Dumbbell}
+          title="No workouts yet"
+          description={`Start logging ${stats.exercise.name} to see your progress`}
+        />
       )}
 
       <ConfirmDialog

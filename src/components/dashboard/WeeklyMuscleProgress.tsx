@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
-import { useWeeklyStats } from '@/hooks/useWeeklyStats'
+import type { WeeklyStats } from '@/hooks/useWeeklyStats'
 
 const GROUP_COLORS: Record<string, string> = {
   chest: '#3b82f6',
@@ -15,9 +15,12 @@ const GROUP_COLORS: Record<string, string> = {
   neck: '#6366f1',
 }
 
-export function WeeklyMuscleProgress() {
+interface WeeklyMuscleProgressProps {
+  stats: WeeklyStats
+}
+
+export function WeeklyMuscleProgress({ stats }: WeeklyMuscleProgressProps) {
   const navigate = useNavigate()
-  const stats = useWeeklyStats()
 
   const data = useMemo(() => {
     if (!stats.loaded || stats.weekWorkouts.length === 0) return null
@@ -32,8 +35,8 @@ export function WeeklyMuscleProgress() {
   if (!data) return null
 
   return (
-    <div className="mb-6">
-      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Weekly Muscle Completion</h2>
+    <div>
+      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Weekly Goal Progress</p>
       <Card>
         <CardContent className="p-4 space-y-3">
           {data.map(mg => {

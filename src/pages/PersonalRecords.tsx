@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useUnit } from '@/hooks/useUnit'
 import { formatWeight } from '@/lib/units'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function PersonalRecordsPage() {
   const navigate = useNavigate()
@@ -49,11 +50,11 @@ export function PersonalRecordsPage() {
       </div>
 
       {(prs && prs.length === 0) ? (
-        <div className="text-center py-12">
-          <div className="text-4xl mb-3">🏆</div>
-          <h3 className="text-lg font-semibold mb-1">No records yet</h3>
-          <p className="text-sm text-muted-foreground">Personal records appear automatically as you progress</p>
-        </div>
+        <EmptyState
+          icon={Trophy}
+          title="No records yet"
+          description="Personal records appear automatically as you progress"
+        />
       ) : (
         ['weight', 'reps', 'volume'].map(type => {
           const items = byType[type as keyof typeof byType]

@@ -18,7 +18,6 @@ function getWeekStart(): Date {
 export interface WeeklyMuscleStat {
   id: string
   name: string
-  icon: string
   sets: number
   target: number
 }
@@ -90,7 +89,6 @@ export function useWeeklyStats(): WeeklyStats {
       return {
         id: mg.id,
         name: mg.name,
-        icon: mg.icon,
         sets: setCount.get(mg.id) ?? 0,
         target,
       }

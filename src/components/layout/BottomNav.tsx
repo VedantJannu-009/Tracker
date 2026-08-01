@@ -26,16 +26,29 @@ export function BottomNav() {
           <NavLink
             key={to}
             to={to}
-              className={({ isActive }) =>
-                cn(
-                  'flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[44px] px-2 py-1 rounded-xl transition-all duration-200',
-                  'text-muted-foreground hover:text-foreground',
-                  isActive && 'text-primary'
-                )
-              }
-            >
-              <Icon size={20} />
-              <span className="text-[10px] font-medium whitespace-nowrap">{label}</span>
+            className={({ isActive }) =>
+              cn(
+                'flex flex-col items-center justify-center gap-1 min-w-[64px] min-h-[44px] px-2 py-1 rounded-xl transition-colors duration-200',
+                'text-muted-foreground hover:text-foreground',
+                isActive && 'text-primary'
+              )
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <span className="relative flex items-center justify-center w-12 h-7">
+                  {isActive && (
+                    <motion.span
+                      layoutId="nav-pill"
+                      className="absolute inset-0 rounded-full bg-primary/15"
+                      transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+                    />
+                  )}
+                  <Icon size={20} className="relative z-10" />
+                </span>
+                <span className="text-[10px] font-medium whitespace-nowrap">{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

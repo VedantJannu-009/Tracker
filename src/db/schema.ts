@@ -11,6 +11,7 @@ import type {
   AppSettings,
   CustomCard,
   WeeklyGoal,
+  RecoverySnapshot,
 } from '@/types'
 
 export class GymDB extends Dexie {
@@ -25,6 +26,7 @@ export class GymDB extends Dexie {
   settings!: EntityTable<AppSettings, 'id'>
   customCards!: EntityTable<CustomCard, 'id'>
   weeklyGoals!: EntityTable<WeeklyGoal, 'id'>
+  recovery!: EntityTable<RecoverySnapshot, 'id'>
 
   constructor() {
     super('gymtracker')
@@ -55,6 +57,20 @@ export class GymDB extends Dexie {
       settings: 'id',
       customCards: 'id, title, pinned, order',
       weeklyGoals: 'id, muscleGroupId',
+    })
+    this.version(4).stores({
+      exercises: 'id, name, muscleGroupId, equipment, difficulty',
+      workouts: 'id, name, date, createdAt',
+      workoutExercises: 'id, workoutId, exerciseId, order',
+      workoutSets: 'id, workoutExerciseId, weight, reps, order',
+      muscleGroups: 'id, name',
+      goals: 'id, title, exerciseId, muscleGroupId, completed, createdAt',
+      personalRecords: 'id, exerciseId, type, achievedAt, workoutId, [exerciseId+type]',
+      bodyMeasurements: 'id, date',
+      settings: 'id',
+      customCards: 'id, title, pinned, order',
+      weeklyGoals: 'id, muscleGroupId',
+      recovery: 'id, status, computedAt',
     })
   }
 }

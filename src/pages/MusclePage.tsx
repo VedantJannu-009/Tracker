@@ -6,6 +6,12 @@ import { useIsMobile } from '@/hooks/useIsMobile'
 import { deleteExercise, renameExercise } from '@/services/exerciseUtils'
 import { sortExercisesByRecency } from '@/lib/exerciseOrdering'
 import { detectPersonalRecords } from '@/services/prDetection'
+import { refreshRecovery } from '@/services/recoveryEngine'
+import { RecoveryCard } from '@/components/muscle/RecoveryCard'
+import { WorkoutHistorySection } from '@/components/muscle/WorkoutHistorySection'
+import { MuscleChartsSection } from '@/components/muscle/MuscleChartsSection'
+import { ExerciseIcon } from '@/components/exercise/ExerciseIcon'
+import { MuscleIcon } from '@/components/muscle/MuscleIcon'
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { PageContainer } from '@/components/layout/PageContainer'
@@ -13,6 +19,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { PageLoading } from '@/components/ui/page-loading'
 import { ArrowLeft, Dumbbell, Activity, Trophy, Clock, Plus, Trash2, Check, X, Save, Loader2, MoreVertical, Pencil, ChevronRight } from 'lucide-react'
 import { formatRelative, generateId } from '@/lib/utils'
 import type { Exercise, WorkoutSet } from '@/types'
@@ -182,7 +189,7 @@ function AvailableExerciseCard({
         className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1 cursor-pointer"
       >
         <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-muted/30 flex items-center justify-center shrink-0">
-          <Dumbbell size={14} className="text-muted-foreground" />
+          <ExerciseIcon name={exercise.name} equipment={exercise.equipment} size={14} className="text-muted-foreground" />
         </div>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium truncate">{exercise.name}</div>
@@ -523,6 +530,7 @@ export function MusclePage() {
         await db.workouts.update(wid, { duration })
       }
       await detectPersonalRecords(wid)
+      await refreshRecovery()
       workoutIdRef.current = null
       setWorkoutId(null)
       setSessionExercises([])
@@ -542,9 +550,7 @@ export function MusclePage() {
             <ArrowLeft size={20} />
           </Button>
         </div>
-        <div className="flex items-center justify-center py-24 text-muted-foreground text-sm">
-          <Loader2 size={16} className="mr-2 animate-spin" /> Loading…
-        </div>
+        <PageLoading />
       </PageContainer>
     )
   }
@@ -575,8 +581,8 @@ export function MusclePage() {
 
       <div className="relative mb-6 overflow-hidden rounded-2xl bg-gradient-to-b from-primary/5 to-transparent border border-border/50 p-4 sm:p-5">
         <div className="flex items-center gap-3 mb-4 sm:mb-5">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-xl sm:text-2xl shrink-0">
-            {muscle.icon}
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+            <MuscleIcon muscleId={muscle.id} size={20} />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold truncate">{muscle.name}</h1>
         </div>
@@ -613,7 +619,9 @@ export function MusclePage() {
         </div>
       </div>
 
-      <div className="space-y-3">
+      <RecoveryCard muscleId={muscle.id} muscleName={muscle.name} />
+
+      <div className="mt-3 space-y-3">
         {sessionExercises.map(se => (
           <ExerciseWorkoutCard
             key={se.workoutExerciseId}
@@ -674,6 +682,19 @@ export function MusclePage() {
             Save Workout ({totalSetsAcrossExercises} {totalSetsAcrossExercises === 1 ? 'set' : 'sets'})
           </Button>
         )}
+      </div>
+
+      <div className="mt-6">
+        <WorkoutHistorySection
+          workouts={stats.workouts}
+          workoutExercises={stats.workoutExercises}
+          sets={stats.sets}
+          exercises={stats.exercises}
+        />
+      </div>
+
+      <div className="mt-6">
+        <MuscleChartsSection chartData={stats.chartData} />
       </div>
 
       <ConfirmDialog

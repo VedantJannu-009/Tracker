@@ -4,11 +4,15 @@ import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import './styles/index.css'
 import { initializeDatabase } from './db/seed'
+import { refreshRecovery } from './services/recoveryEngine'
 import './stores/themeStore'
 import { useLaunchStore } from './stores/launchStore'
 
 initializeDatabase()
-  .then(() => useLaunchStore.getState().setReady())
+  .then(() => {
+    useLaunchStore.getState().setReady()
+    refreshRecovery().catch(() => {})
+  })
   .catch((err) => {
     console.error('Failed to initialize database', err)
     useLaunchStore.getState().setReady()

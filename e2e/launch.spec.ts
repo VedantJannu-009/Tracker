@@ -15,5 +15,5 @@ test('launch plays the splash timeline, then the first-launch welcome, then reve
   await expect(page.getByText("Let's build your best physique.")).toBeVisible()
 
   await expect(page.getByText('Welcome to My Tracker')).toHaveCount(0, { timeout: 8000 })
-  await expect(page.getByText('Dashboard')).toBeVisible()
+  await expect(page.getByText("Today's Focus")).toBeVisible()
 })

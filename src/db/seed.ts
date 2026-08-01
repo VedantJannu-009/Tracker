@@ -2,15 +2,15 @@ import { db } from './schema'
 import type { MuscleGroup, Exercise } from '@/types'
 
 export const defaultMuscleGroups: MuscleGroup[] = [
-  { id: 'neck', name: 'Neck', icon: '🦒' },
-  { id: 'chest', name: 'Chest', icon: '💪' },
-  { id: 'shoulders', name: 'Shoulders', icon: '🏋️' },
-  { id: 'back', name: 'Back', icon: '🔙' },
-  { id: 'legs', name: 'Legs', icon: '🦵' },
-  { id: 'abs', name: 'Abs', icon: '🔥' },
-  { id: 'biceps', name: 'Biceps', icon: '💪' },
-  { id: 'triceps', name: 'Triceps', icon: '💪' },
-  { id: 'forearms', name: 'Forearms', icon: '✊' },
+  { id: 'neck', name: 'Neck' },
+  { id: 'chest', name: 'Chest' },
+  { id: 'shoulders', name: 'Shoulders' },
+  { id: 'back', name: 'Back' },
+  { id: 'legs', name: 'Legs' },
+  { id: 'abs', name: 'Abs' },
+  { id: 'biceps', name: 'Biceps' },
+  { id: 'triceps', name: 'Triceps' },
+  { id: 'forearms', name: 'Forearms' },
 ]
 
 export const defaultExercises: Exercise[] = [

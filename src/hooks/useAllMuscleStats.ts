@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '@/db/schema'
 
-export function useAllMuscleStats() {
+export function useAllMuscleStats(enabled = true) {
   const data = useLiveQuery(
     async () => {
+      if (!enabled) return new Map()
       const muscles = await db.muscleGroups.toArray()
       const exercises = await db.exercises.toArray()
       const workoutExercises = await db.workoutExercises.toArray()
@@ -40,7 +41,7 @@ export function useAllMuscleStats() {
 
       return muscleMap
     },
-    []
+    [enabled]
   )
 
   return useMemo(() => data ?? new Map(), [data])

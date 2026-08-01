@@ -5,13 +5,19 @@ A fully offline-first PWA for tracking workouts, personal records, muscle-specif
 ## Features
 
 - **Workout logging** — log exercises with sets, reps, and weight; workouts auto-timed; edit or delete any workout
-- **Personal records** — PRs detected automatically per exercise (by weight and by estimated 1RM), never duplicated, cascade-deleted with their workout
+- **Personal records** — PRs detected automatically per exercise (by weight, reps, and volume), never duplicated, cascade-deleted with their workout
+- **Statistics & insights** — lifetime totals (workouts, hours, sets, volume, streaks), a 12-week frequency chart, and rule-based weekly insights that surface muscle groups needing attention (no AI)
+- **Muscle recovery** — each muscle group gets a recovery estimate (DOMS-style) from its last training, shown as ready / recovering / inactive with a dedicated recovery engine
 - **Interactive muscle map** — tap any muscle on the anatomy chart to see its exercises and progress; heat coloring shows frequency
+- **Premium workout history** — sessions grouped by day with expandable set-by-set detail on muscle and exercise pages
 - **Weekly goals** — set weekly set targets per muscle group and track progress
 - **Body measurements** — track weight and body metrics with charts
-- **Dashboard** — today's stats, streak counter, progress graphs, recent workouts
+- **Dashboard** — greeting, today's focus card, weekly progress, activity heatmap, recent workouts
 - **Custom cards** — pin your favorite stats to the home screen with sparklines
+- **Search** — search exercises with muscle-group and difficulty filters; rename, duplicate, or delete
+- **Icon system** — every exercise and muscle maps to a Lucide icon (barbell, cable, bodyweight, etc.)
 - **Units** — kg ↔ lbs conversion; weights are stored canonically in kg and converted for display
+- **Theme** — dark / light / system with a custom brand accent
 - **Backup** — export/import the full database as a JSON file with atomic, validated restore
 - **PWA** — installable, works fully offline, auto-updating service worker
 
@@ -21,7 +27,7 @@ A fully offline-first PWA for tracking workouts, personal records, muscle-specif
 - **Tailwind CSS 4**
 - **Dexie 4** + dexie-react-hooks for IndexedDB persistence (schema v3)
 - **react-router-dom** with route-level code splitting
-- **Zustand** for UI state, **recharts** for graphs, **framer-motion** for animations
+- **Zustand** for UI state, **recharts** for graphs, **framer-motion** for animations, **lucide-react** for icons
 - **vite-plugin-pwa** for the offline service worker
 
 ## Getting Started
@@ -33,21 +39,28 @@ npm run dev      # start dev server
 
 ## Scripts
 
-| Command         | Description                       |
-| --------------- | --------------------------------- |
-| `npm run dev`   | Start the Vite dev server         |
-| `npm run build` | Typecheck + production build      |
-| `npm run preview` | Preview the production build   |
-| `npm test`      | Run the test suite (Vitest)       |
-| `npm run lint`  | Run ESLint                        |
+| Command             | Description                       |
+| ------------------- | --------------------------------- |
+| `npm run dev`       | Start the Vite dev server         |
+| `npm run build`     | Typecheck + production build      |
+| `npm run preview`   | Preview the production build      |
+| `npm test`          | Run the unit test suite (Vitest)  |
+| `npm run test:e2e`  | Run the Playwright e2e suite      |
+| `npm run lint`      | Run ESLint                        |
 
 ## Testing
 
-Vitest + Testing Library against an in-browser IndexedDB mock (`fake-indexeddb`). Tests cover the data-critical logic: PR detection/upsert, workout store transactions (order, duration, cascade deletes), backup export/import, and the toast UI. The data layer tests previously caught a real bug (missing `workoutId` index on PR records) which is fixed in schema v3.
+- **Unit (Vitest + Testing Library)** — 134 tests across 23 files against an in-browser IndexedDB mock (`fake-indexeddb`). Coverage includes PR detection/upsert, workout store transactions (order, duration, cascade deletes), backup export/import, the recovery engine, weekly insights scoring, exercise/muscle icon mapping, and timeline grouping.
+- **E2E (Playwright)** — 26 tests across 5 suites running against the production build in system Chrome on mobile, tablet, and desktop viewports. Covers the launch/splash flow, all routes rendering without runtime errors, exercise-list menu delete flows, workout delete confirmations, keyboard accessibility, and the workout-mode stats bar.
+
+## Deployment
+
+- **Vercel** — `vercel.json` configures the Vite framework with an SPA fallback rewrite; deploy with `vercel --prod`.
+- **GitHub Pages** — a `docs`-based workflow (`deploy.yml`) builds with `GH_PAGES=true` for a `/Tracker/` base path.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`, lint, typecheck, tests, and the production build on Node 22 for every push and PR.
+GitHub Actions (`.github/workflows/ci.yml`) runs `npm ci`, lint, typecheck, unit tests, e2e tests, and the production build on Node 22 for every push and PR.
 
 ## Security Notes
 

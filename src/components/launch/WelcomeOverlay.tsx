@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { Dumbbell } from 'lucide-react'
 import { useLaunchStore } from '@/stores/launchStore'
 
 function greetingByTime(): string {
@@ -39,12 +40,12 @@ export function WelcomeOverlay() {
       transition={{ duration: 0.4, ease: 'easeOut' }}
     >
       <motion.div
-        className="text-5xl mb-4"
+        className="w-20 h-20 rounded-3xl bg-primary/10 border border-primary/10 flex items-center justify-center mb-5"
         initial={{ opacity: 0, scale: 0.85 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 22 }}
       >
-        💪
+        <Dumbbell size={36} className="text-primary" />
       </motion.div>
       <motion.h2
         className="text-2xl sm:text-3xl font-bold text-center px-6"

@@ -6,10 +6,12 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CustomCard } from '@/components/muscle-card/CustomCard'
-import { ArrowLeft, Plus, Trash2, Pin, X } from 'lucide-react'
+import { MuscleIcon } from '@/components/muscle/MuscleIcon'
+import { ArrowLeft, Plus, Trash2, Pin, X, LayoutGrid } from 'lucide-react'
 import { generateId } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import type { CustomCard as CustomCardType } from '@/types'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const ICONS = ['💪', '🏋️', '🔥', '🎯', '⚡', '🌟', '📈', '💯', '🔱', '🛡️']
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
@@ -128,13 +130,14 @@ export function CustomCardsPage() {
                   <button
                     key={m.id}
                     onClick={() => toggleMuscle(m.id)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all ${
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1 ${
                       form.muscleGroupIds.includes(m.id)
                         ? 'bg-primary text-primary-foreground'
                         : 'bg-muted/30 text-muted-foreground'
                     }`}
                   >
-                    {m.icon} {m.name}
+                    <MuscleIcon muscleId={m.id} size={12} />
+                    {m.name}
                   </button>
                 ))}
               </div>
@@ -174,14 +177,16 @@ export function CustomCardsPage() {
         ))}
 
         {(!cards || cards.length === 0) && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">📋</div>
-            <h3 className="text-lg font-semibold mb-1">No custom cards</h3>
-            <p className="text-sm text-muted-foreground mb-4">Create custom dashboard cards to group muscles</p>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus size={16} className="mr-1" /> Create Card
-            </Button>
-          </div>
+          <EmptyState
+            icon={LayoutGrid}
+            title="No custom cards"
+            description="Create custom dashboard cards to group muscles"
+            action={
+              <Button onClick={() => setShowForm(true)}>
+                <Plus size={16} className="mr-1" /> Create Card
+              </Button>
+            }
+          />
         )}
       </div>
     </PageContainer>

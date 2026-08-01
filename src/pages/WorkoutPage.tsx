@@ -14,10 +14,11 @@ import { ExerciseCard } from '@/components/workout/ExerciseCard'
 import { WorkoutModeBar } from '@/components/workout/WorkoutModeBar'
 import { WorkoutCompleteModal, type WorkoutSummary } from '@/components/workout/WorkoutCompleteModal'
 import { useExerciseMeta } from '@/hooks/useExerciseMeta'
-import { ArrowLeft, Plus, Trash2, Play, X } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, Play, X, Dumbbell } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { useUnit } from '@/hooks/useUnit'
 import { unitToKg } from '@/lib/units'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function WorkoutPage() {
   const { id } = useParams<{ id: string }>()
@@ -177,21 +178,23 @@ export function WorkoutPage() {
           <h1 className="text-2xl font-bold">New Workout</h1>
         </div>
 
-        <div className="text-center py-12">
-          <div className="text-5xl mb-4">🏋️</div>
-          <h2 className="text-xl font-semibold mb-2">Ready to train?</h2>
-          <p className="text-sm text-muted-foreground mb-6">Start a new workout session</p>
-          <div className="max-w-xs mx-auto space-y-3">
-            <Input
-              placeholder="Workout name (optional)"
-              value={workoutName}
-              onChange={e => setWorkoutName(e.target.value)}
-            />
-            <Button className="w-full" size="lg" onClick={handleStartWorkout}>
-              <Play size={18} className="mr-2" /> Start Workout
-            </Button>
-          </div>
-        </div>
+        <EmptyState
+          icon={Dumbbell}
+          title="Ready to train?"
+          description="Start a new workout session"
+          action={
+            <div className="max-w-xs mx-auto space-y-3">
+              <Input
+                placeholder="Workout name (optional)"
+                value={workoutName}
+                onChange={e => setWorkoutName(e.target.value)}
+              />
+              <Button className="w-full" size="lg" onClick={handleStartWorkout}>
+                <Play size={18} className="mr-2" /> Start Workout
+              </Button>
+            </div>
+          }
+        />
 
         <div className="mt-8">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Recent Workouts</h2>

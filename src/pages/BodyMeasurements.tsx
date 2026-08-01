@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { AreaChart } from '@/components/charts/AreaChart'
-import { ArrowLeft, Plus, X } from 'lucide-react'
+import { ArrowLeft, Plus, X, Ruler, Scale, Percent } from 'lucide-react'
 import { formatDate, generateId } from '@/lib/utils'
 import { useNavigate } from 'react-router-dom'
 import type { BodyMeasurement } from '@/types'
 import { useUnit } from '@/hooks/useUnit'
 import { kgToUnit, unitToKg } from '@/lib/units'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export function BodyMeasurementsPage() {
   const navigate = useNavigate()
@@ -43,13 +44,13 @@ export function BodyMeasurementsPage() {
   }
 
   const fields = [
-    { key: 'weight', label: `Weight (${unit})`, icon: '⚖️' },
-    { key: 'bodyFat', label: 'Body Fat (%)', icon: '📊' },
-    { key: 'chest', label: 'Chest (cm)', icon: '📏' },
-    { key: 'waist', label: 'Waist (cm)', icon: '📏' },
-    { key: 'arms', label: 'Arms (cm)', icon: '📏' },
-    { key: 'thighs', label: 'Thighs (cm)', icon: '📏' },
-    { key: 'neck', label: 'Neck (cm)', icon: '📏' },
+    { key: 'weight', label: `Weight (${unit})`, icon: Scale },
+    { key: 'bodyFat', label: 'Body Fat (%)', icon: Percent },
+    { key: 'chest', label: 'Chest (cm)', icon: Ruler },
+    { key: 'waist', label: 'Waist (cm)', icon: Ruler },
+    { key: 'arms', label: 'Arms (cm)', icon: Ruler },
+    { key: 'thighs', label: 'Thighs (cm)', icon: Ruler },
+    { key: 'neck', label: 'Neck (cm)', icon: Ruler },
   ] as const
 
   type FieldKey = typeof fields[number]['key']
@@ -116,7 +117,7 @@ export function BodyMeasurementsPage() {
             <Card key={field.key}>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <span>{field.icon}</span>
+                  <field.icon size={16} className="text-muted-foreground" />
                   <CardTitle className="text-sm">{field.label}</CardTitle>
                 </div>
               </CardHeader>
@@ -128,14 +129,16 @@ export function BodyMeasurementsPage() {
         })}
 
         {(!measurements || measurements.length === 0) && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-3">📏</div>
-            <h3 className="text-lg font-semibold mb-1">No measurements yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Start tracking your body measurements</p>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus size={16} className="mr-1" /> Add Measurement
-            </Button>
-          </div>
+          <EmptyState
+            icon={Ruler}
+            title="No measurements yet"
+            description="Start tracking your body measurements"
+            action={
+              <Button onClick={() => setShowForm(true)}>
+                <Plus size={16} className="mr-1" /> Add Measurement
+              </Button>
+            }
+          />
         )}
       </div>
     </PageContainer>
