@@ -1,10 +1,9 @@
 import { useMemo } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
-import { db } from '@/db/schema'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Target } from 'lucide-react'
+import { useWeeklyStats } from '@/hooks/useWeeklyStats'
 
 const GROUP_COLORS: Record<string, string> = {
   chest: '#3b82f6',
@@ -18,16 +17,6 @@ const GROUP_COLORS: Record<string, string> = {
   neck: '#6366f1',
 }
 
-function getWeekStart(): Date {
-  const now = new Date()
-  const day = now.getDay()
-  const diff = day === 0 ? 6 : day - 1
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - diff)
-  monday.setHours(0, 0, 0, 0)
-  return monday
-}
-
 interface FocusResult {
   muscle: { id: string; name: string; icon: string }
   done: number
@@ -37,64 +26,29 @@ interface FocusResult {
 
 export function TodaysFocusCard() {
   const navigate = useNavigate()
-  const muscleGroups = useLiveQuery(() => db.muscleGroups.toArray())
-  const weeklyGoals = useLiveQuery(() => db.weeklyGoals.toArray())
-  const allExercises = useLiveQuery(() => db.exercises.toArray())
-  const allWorkoutExercises = useLiveQuery(() => db.workoutExercises.toArray())
-  const allSets = useLiveQuery(() => db.workoutSets.toArray())
-  const allWorkouts = useLiveQuery(() => db.workouts.toArray())
+  const stats = useWeeklyStats()
 
   const focus = useMemo<FocusResult | null>(() => {
-    if (!muscleGroups || !weeklyGoals || !allExercises || !allWorkoutExercises || !allSets || !allWorkouts) return null
-    if (weeklyGoals.length === 0) return null
+    if (!stats.loaded || stats.weeklyGoals.length === 0) return null
 
-    const goalMap = new Map(weeklyGoals.map(g => [g.muscleGroupId, g.targetSets]))
-
-    const weekStart = getWeekStart()
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 7)
-    const weekStartTs = weekStart.getTime()
-    const weekEndTs = weekEnd.getTime()
-
-    const weekWorkouts = allWorkouts.filter(w => {
-      const t = new Date(w.date).getTime()
-      return t >= weekStartTs && t < weekEndTs
-    })
-
-    const weekWids = new Set(weekWorkouts.map(w => w.id))
-    const weekWes = allWorkoutExercises.filter(we => weekWids.has(we.workoutId))
-    const weekWeIds = new Set(weekWes.map(we => we.id))
-    const weekSets = allSets.filter(s => weekWeIds.has(s.workoutExerciseId))
-
-    const exerciseMuscleMap = new Map<string, string>()
-    for (const ex of allExercises) exerciseMuscleMap.set(ex.id, ex.muscleGroupId)
-    const weExerciseMap = new Map<string, string>()
-    for (const we of weekWes) weExerciseMap.set(we.id, we.exerciseId)
-
-    const setCount = new Map<string, number>()
-    for (const s of weekSets) {
-      const exerciseId = weExerciseMap.get(s.workoutExerciseId)
-      const muscleId = exerciseId ? exerciseMuscleMap.get(exerciseId) : undefined
-      if (muscleId) setCount.set(muscleId, (setCount.get(muscleId) ?? 0) + 1)
-    }
+    const statById = new Map(stats.muscleStats.map(s => [s.id, s]))
 
     let best: FocusResult | null = null
     let bestRemaining = -1
-    for (const mg of muscleGroups) {
-      const target = goalMap.get(mg.id)
+    for (const mg of stats.muscleGroups) {
+      const target = stats.targetMap.get(mg.id)
       if (!target || target <= 0) continue
-      const done = setCount.get(mg.id) ?? 0
+      const done = statById.get(mg.id)?.sets ?? 0
       const remaining = Math.max(0, target - done)
       if (remaining > bestRemaining) {
         bestRemaining = remaining
-        best = { muscle: mg, done, target, remaining }
+        best = { muscle: { id: mg.id, name: mg.name, icon: mg.icon }, done, target, remaining }
       }
     }
     return best
-  }, [muscleGroups, weeklyGoals, allExercises, allWorkoutExercises, allSets, allWorkouts])
+  }, [stats])
 
-  const loaded = !!muscleGroups && !!weeklyGoals && !!allExercises && !!allWorkoutExercises && !!allSets && !!allWorkouts
-  if (!loaded) return null
+  if (!stats.loaded) return null
 
   if (!focus) {
     return (

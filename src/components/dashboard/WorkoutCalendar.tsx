@@ -72,11 +72,11 @@ export function WorkoutCalendar() {
       <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Calendar</h2>
         <div className="rounded-xl bg-muted/30 border border-border/30 p-2 sm:p-3">
         <div className="flex items-center justify-between mb-2 sm:mb-3">
-          <button onClick={prevMonth} className="p-1.5 rounded hover:bg-muted/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <button onClick={prevMonth} aria-label="Previous month" className="p-1.5 rounded hover:bg-muted/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
             <ChevronLeft size={16} className="text-muted-foreground" />
           </button>
           <span className="text-xs sm:text-sm font-medium">{MONTHS[viewMonth]} {viewYear}</span>
-          <button onClick={nextMonth} className="p-1.5 rounded hover:bg-muted/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
+          <button onClick={nextMonth} aria-label="Next month" className="p-1.5 rounded hover:bg-muted/50 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center">
             <ChevronRight size={16} className="text-muted-foreground" />
           </button>
         </div>

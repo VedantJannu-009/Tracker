@@ -3,12 +3,14 @@ import { db } from '@/db/schema'
 import { toLocalDateKey } from '@/lib/dates'
 
 export function useExerciseStats(exerciseId: string) {
-  const exercise = useLiveQuery(() => db.exercises.get(exerciseId))
-  const muscleRaw = useLiveQuery(
+  const exercise = useLiveQuery(async () => {
+    const ex = await db.exercises.get(exerciseId)
+    return ex ?? null
+  }, [exerciseId])
+  const muscle = useLiveQuery(
     () => exercise ? db.muscleGroups.get(exercise.muscleGroupId) : undefined,
     [exercise]
-  )
-  const muscle = muscleRaw ?? undefined
+  ) ?? undefined
 
   const workoutExercises = useLiveQuery(
     () => db.workoutExercises.where('exerciseId').equals(exerciseId).toArray(),

@@ -134,7 +134,7 @@ export function ExerciseCard({
                 <span className="text-xs text-muted-foreground mx-1">x</span>
                 <span className="w-10 sm:w-16 text-right text-xs sm:text-sm font-medium">{set.reps}</span>
                 <span className="hidden sm:block w-16 text-right text-xs text-muted-foreground">{formatWeight(set.weight * set.reps, unit)}</span>
-                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-6 sm:w-6 shrink-0" onClick={() => onRemoveSet(set.id)}>
+                <Button variant="ghost" size="icon" className="h-7 w-7 sm:h-6 sm:w-6 shrink-0" onClick={() => onRemoveSet(set.id)} aria-label={`Remove set ${i + 1}`}>
                   <X size={12} />
                 </Button>
               </div>

@@ -94,10 +94,10 @@ export function GoalsPage() {
                     </h3>
                   </div>
                   <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleComplete(goal)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleToggleComplete(goal)} aria-label={goal.completed ? `Mark ${goal.title} as not complete` : `Mark ${goal.title} as complete`}>
                       <CheckCircle size={14} className={goal.completed ? 'text-success' : 'text-muted-foreground'} />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(goal.id)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDelete(goal.id)} aria-label={`Delete ${goal.title}`}>
                       <Trash2 size={14} />
                     </Button>
                   </div>
@@ -108,6 +108,7 @@ export function GoalsPage() {
                     value={goal.currentValue}
                     onChange={e => handleUpdateProgress(goal.id, e.target.value)}
                     className="h-8 w-20 text-sm"
+                    aria-label={`Current value for ${goal.title}`}
                   />
                   <span className="text-sm text-muted-foreground">/ {goal.targetValue} {goal.unit}</span>
                   <Badge variant={progress >= 100 ? 'success' : 'default'} className="ml-auto">

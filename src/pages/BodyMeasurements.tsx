@@ -84,7 +84,7 @@ export function BodyMeasurementsPage() {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">New Measurement</h3>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForm(false)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForm(false)} aria-label="Close measurement form">
                 <X size={14} />
               </Button>
             </div>
@@ -98,6 +98,7 @@ export function BodyMeasurementsPage() {
                     value={form[f.key]}
                     onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
                     className="h-9"
+                    aria-label={f.label}
                   />
                 </div>
               ))}

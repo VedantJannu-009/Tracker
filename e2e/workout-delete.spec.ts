@@ -20,7 +20,7 @@ async function addExercise(page: Page, muscleId: string, exerciseId: string) {
   await page.getByRole('button', { name: /Add Exercise/i }).click()
   await page.locator('select').nth(0).selectOption(muscleId)
   await page.locator('select').nth(1).selectOption(exerciseId)
-  await page.getByRole('button', { name: /Add Exercise/i }).click()
+  await page.getByRole('button', { name: 'Add Exercise', exact: true }).click()
   await expect(page.locator('select')).toHaveCount(0)
 }
 

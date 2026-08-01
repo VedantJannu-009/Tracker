@@ -95,6 +95,7 @@ export function WeeklyGoalsPage() {
                     value={targets[mg.id] ?? DEFAULT_TARGET}
                     onChange={e => setTargets(prev => ({ ...prev, [mg.id]: parseInt(e.target.value) || 0 }))}
                     className="w-14 sm:w-16 h-8 text-center text-xs sm:text-sm"
+                    aria-label={`Weekly set target for ${mg.name}`}
                   />
                   <span className="text-xs text-muted-foreground shrink-0">sets</span>
                 </div>

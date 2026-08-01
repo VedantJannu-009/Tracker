@@ -65,7 +65,7 @@ export function CustomCardsPage() {
     <PageContainer>
       <div className="flex items-center justify-between mb-6 gap-2">
         <div className="flex items-center gap-3 min-w-0 flex-1">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="shrink-0">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="shrink-0" aria-label="Back to home">
             <ArrowLeft size={20} />
           </Button>
           <div className="min-w-0">
@@ -73,7 +73,7 @@ export function CustomCardsPage() {
             <p className="text-xs sm:text-sm text-muted-foreground">Create custom dashboard cards</p>
           </div>
         </div>
-        <Button size="icon" onClick={() => setShowForm(!showForm)} className="shrink-0">
+        <Button size="icon" onClick={() => setShowForm(!showForm)} className="shrink-0" aria-label="Add custom card">
           <Plus size={20} />
         </Button>
       </div>
@@ -83,7 +83,7 @@ export function CustomCardsPage() {
           <CardContent className="p-4 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold">New Card</h3>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForm(false)}>
+              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setShowForm(false)} aria-label="Close card form">
                 <X size={14} />
               </Button>
             </div>
@@ -156,6 +156,7 @@ export function CustomCardsPage() {
                 size="icon"
                 className="h-8 w-8 bg-card/80 backdrop-blur"
                 onClick={() => handleTogglePin(card)}
+                aria-label={card.pinned ? `Unpin ${card.title}` : `Pin ${card.title}`}
               >
                 <Pin size={14} className={card.pinned ? 'text-primary' : ''} />
               </Button>
@@ -164,6 +165,7 @@ export function CustomCardsPage() {
                 size="icon"
                 className="h-8 w-8 bg-card/80 backdrop-blur text-destructive"
                 onClick={() => handleDelete(card.id)}
+                aria-label={`Delete ${card.title}`}
               >
                 <Trash2 size={14} />
               </Button>

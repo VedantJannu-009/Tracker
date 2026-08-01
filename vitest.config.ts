@@ -1,12 +1,11 @@
 import { defineConfig } from 'vitest/config'
 import tailwindcss from '@tailwindcss/vite'
-import path from 'path'
 
 export default defineConfig({
   plugins: [tailwindcss()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': import.meta.dirname + '/src',
     },
   },
   test: {

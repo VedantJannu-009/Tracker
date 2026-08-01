@@ -1,81 +1,27 @@
 import { useMemo } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
-import { db } from '@/db/schema'
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
 import { Card, CardContent } from '@/components/ui/card'
+import { useWeeklyStats } from '@/hooks/useWeeklyStats'
 
 const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1']
 
-function getWeekStart(): Date {
-  const now = new Date()
-  const day = now.getDay()
-  const diff = day === 0 ? 6 : day - 1
-  const monday = new Date(now)
-  monday.setDate(now.getDate() - diff)
-  monday.setHours(0, 0, 0, 0)
-  return monday
-}
-
 export function WeeklyMuscleDistributionChart() {
   const navigate = useNavigate()
-  const muscleGroups = useLiveQuery(() => db.muscleGroups.toArray())
-  const allExercises = useLiveQuery(() => db.exercises.toArray())
-  const allWorkoutExercises = useLiveQuery(() => db.workoutExercises.toArray())
-  const allSets = useLiveQuery(() => db.workoutSets.toArray())
-  const allWorkouts = useLiveQuery(() => db.workouts.toArray())
+  const stats = useWeeklyStats()
 
   const chartData = useMemo(() => {
-    if (!muscleGroups || !allExercises || !allWorkoutExercises || !allSets || !allWorkouts) return []
-
-    const weekStart = getWeekStart()
-    const weekEnd = new Date(weekStart)
-    weekEnd.setDate(weekEnd.getDate() + 7)
-    const weekStartTs = weekStart.getTime()
-    const weekEndTs = weekEnd.getTime()
-
-    const weekWorkouts = allWorkouts.filter(w => {
-      const t = new Date(w.date).getTime()
-      return t >= weekStartTs && t < weekEndTs
-    })
-
-    if (weekWorkouts.length === 0) return []
-
-    const weekWids = new Set(weekWorkouts.map(w => w.id))
-    const weekWes = allWorkoutExercises.filter(we => weekWids.has(we.workoutId))
-    const weekWeIds = new Set(weekWes.map(we => we.id))
-    const weekSets = allSets.filter(s => weekWeIds.has(s.workoutExerciseId))
-
-    const exerciseMuscleMap = new Map<string, string>()
-    for (const ex of allExercises) {
-      exerciseMuscleMap.set(ex.id, ex.muscleGroupId)
-    }
-
-    const weExerciseMap = new Map<string, string>()
-    for (const we of weekWes) {
-      weExerciseMap.set(we.id, we.exerciseId)
-    }
-
-    const setCount = new Map<string, number>()
-    for (const s of weekSets) {
-      const exerciseId = weExerciseMap.get(s.workoutExerciseId)
-      if (!exerciseId) continue
-      const muscleId = exerciseMuscleMap.get(exerciseId)
-      if (!muscleId) continue
-      setCount.set(muscleId, (setCount.get(muscleId) ?? 0) + 1)
-    }
-
-    const total = [...setCount.values()].reduce((sum, c) => sum + c, 0)
+    if (!stats.loaded || stats.weekWorkouts.length === 0) return []
+    const total = stats.muscleStats.reduce((sum, m) => sum + m.sets, 0)
     if (total === 0) return []
-
-    return muscleGroups
+    return stats.muscleStats
       .map(mg => ({
         id: mg.id,
         label: mg.name,
-        value: Math.round(((setCount.get(mg.id) ?? 0) / total) * 100),
+        value: Math.round((mg.sets / total) * 100),
       }))
       .sort((a, b) => b.value - a.value)
-  }, [muscleGroups, allExercises, allWorkoutExercises, allSets, allWorkouts])
+  }, [stats])
 
   if (!chartData.length) return null
 

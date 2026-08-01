@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
-import path from 'path'
 
 const base = process.env.GH_PAGES === 'true' ? '/Tracker/' : '/'
 
@@ -30,7 +29,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src'),
+      '@': import.meta.dirname + '/src',
     },
   },
 })

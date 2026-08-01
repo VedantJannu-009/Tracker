@@ -28,7 +28,7 @@ export function Home() {
             <h1 className="text-xl sm:text-2xl font-bold truncate">Dashboard</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Track your progress</p>
           </div>
-          <Button size="icon" onClick={() => navigate('/workout')} className="shrink-0">
+          <Button size="icon" onClick={() => navigate('/workout')} className="shrink-0" aria-label="Start workout">
             <Plus size={20} />
           </Button>
         </div>
